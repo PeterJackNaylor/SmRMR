@@ -1,0 +1,6 @@
+[flake8]
+per-file-ignores =
+    dclasso/dclasso/__init__.py:F401
+    dclasso/src/templates/classification/stg.py:F401
+ignore = E203
+max-line-length = 88

@@ -1,0 +1,5 @@
+#!/bin/sh
+eval "$(conda shell.bash hook)"; conda activate env/
+black dclasso src test
+flake8 dclasso src test
+exec dvc git-hook pre-commit $@
