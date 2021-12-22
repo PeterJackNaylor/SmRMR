@@ -1,4 +1,4 @@
-# import functools
+import functools
 from typing import Callable, Dict
 import jax
 import jax.numpy as np
@@ -7,6 +7,7 @@ from jaxkern.dist import sqeuclidean_distance
 
 
 # @functools.partial(jax.jit, static_argnums=(0))
+@functools.lru_cache(maxsize=None)
 def gram(
     func: Callable,
     params: Dict,
