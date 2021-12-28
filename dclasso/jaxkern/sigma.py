@@ -1,7 +1,34 @@
+# import functools
 import jax.numpy as np
 
-from jaxkern.dist import pdist_squareform
-from jaxkern.utils import ensure_min_eps
+from .dist import pdist_squareform
+from .utils import ensure_min_eps
+
+
+# @functools.lru_cache(maxsize=None)
+def k_estimate_sigma_median(X: np.ndarray) -> float:
+    """Kernel estimate sigma using the median distance
+    Only check the above triangle elements
+    Parameters
+    ----------
+    X : jax.numpy.ndarray
+        input data (n_samples, n_features)
+
+    Returns
+    -------
+    sigma : float
+        the estimated sigma
+    """
+    # compute distance matrix
+    dists = pdist_squareform(X, X)
+    n, p = dists.shape
+    # remove non-zero elements
+    # dists = dists[np.nonzero(dists)]
+    indices = np.triu_indices(n, k=1, m=p)
+    # get the median value
+    sigma = np.median(dists[indices])
+
+    return sigma
 
 
 def estimate_sigma_median(X: np.ndarray, Y: np.ndarray) -> float:
@@ -24,7 +51,6 @@ def estimate_sigma_median(X: np.ndarray, Y: np.ndarray) -> float:
 
     # remove non-zero elements
     # dists = dists[np.nonzero(dists)]
-
     # get the median value
     sigma = np.median(dists[np.nonzero(dists)])
 

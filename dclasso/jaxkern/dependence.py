@@ -2,8 +2,8 @@ from typing import Callable, Dict
 import jax
 import jax.numpy as np
 
-from jaxkern.kernels import gram, covariance_matrix
-from jaxkern.utils import centering
+from .kernels import gram, covariance_matrix
+from .utils import centering
 
 jax_np = jax.numpy.ndarray
 

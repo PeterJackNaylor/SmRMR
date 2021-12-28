@@ -9,11 +9,11 @@ params.mode = "classification"
 config = file("${params.out}/config.yaml")
 mode = params.mode
 
-num_samples = [20]
-num_features = [20]
+num_samples = [500]
+num_features = [5000]
 
 simulation_models = ['categorical_1']
-feature_selection_algorithms = ['all_features']
+feature_selection_algorithms = ['dclasso']
 model_algorithms = ['logistic_regression', 'random_forest', 'svc', 'knn']
 performance_metrics = ['auc_roc', 'tpr_fpr', 'features_tpr_fpr']
 
@@ -118,6 +118,6 @@ workflow models {
 
 workflow {
     main:
-        simulate_data(simulation_models, 100, 100)
+        simulate_data(simulation_models, num_samples, num_features)
         models(simulate_data.out)
 }

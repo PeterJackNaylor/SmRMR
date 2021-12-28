@@ -3,7 +3,7 @@ from typing import Callable, Dict
 import jax
 import jax.numpy as np
 
-from jaxkern.dist import sqeuclidean_distance
+from .dist import sqeuclidean_distance
 
 
 # @functools.partial(jax.jit, static_argnums=(0))

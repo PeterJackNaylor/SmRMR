@@ -1,6 +1,7 @@
 ./data/
 work/
 env/
+.nextflow*
 
 ### Data files
 *.tsv
