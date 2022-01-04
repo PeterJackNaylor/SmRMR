@@ -24,7 +24,7 @@ stg:
 dclasso:
   alpha: [0.1]
   measure_stat: ["HSIC"]
-  optimizer: ["adam"]
-  kernel: ["linear", "gaussian"]
-  penalty: ["l1"]
+  optimizer: ["SGD"]
+  kernel: ["linear"]
+  penalty: ["scad"]
 
