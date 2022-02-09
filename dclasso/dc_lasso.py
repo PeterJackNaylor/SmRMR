@@ -1,9 +1,10 @@
 import numpy.typing as npt
 from collections import namedtuple
 from tqdm import trange
-
+import numpy as npy
 import jax.numpy as np
-from jax import jit, vmap, value_and_grad, random
+from jax.lax import top_k
+from jax import jit, vmap, value_and_grad, random, grad
 from jax.example_libraries import optimizers
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -13,6 +14,7 @@ from . import association_measures as am
 from .association_measures.hsic import precompute_kernels
 from .association_measures.kernel_tools import check_vector
 from .penalties import penalty_dic
+from .utils import generate_random_sets, knock_off_check_parameters, get_equi_features, generate_random_sets
 
 
 OptimizerState = namedtuple(
@@ -54,12 +56,12 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.normalise_input = normalise_input
         self.penalty = penalty
         self.optimizer = optimizer
-        self.learning_rate = 0.001
-        self.lambda_ = 1.0
+        self.learning_rate = 0.01
+        self.lambda_ = 0.15 * .2
         self.ms_kwargs = ms_kwargs if ms_kwargs else {}
         self.opt_kwargs = opt_kwargs if opt_kwargs else {}
 
-    def get_assoc(self, x, y=None, **kwargs):
+    def D(self, x, y=None, **kwargs):
 
         args = {}
         if self.measure_stat in kernel_am:
@@ -75,12 +77,18 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self,
         X: npt.ArrayLike,
         y: npt.ArrayLike,
+        n1: float,
+        d: int = None,
         seed: int = 42,
+        max_epoch: int = 1500,
+        eps_stop:float = 1e-8,
     ):
-
+        self.precomputed_elements = False
         if seed:
             key = random.PRNGKey(seed)
-        print("maybe here is a good place to add knockoff generation..")
+
+
+        ## we have to prescreen and split
         X, y = check_X_y(X, y)
         X = np.asarray(X)
         n, p = X.shape
@@ -89,14 +97,64 @@ class DCLasso(BaseEstimator, TransformerMixin):
         assert n == ny
         y = check_vector(y)
 
-        loss_fn = self.compute_loss_fn(X, y)
-        step_function, opt_state, get_beta = self.set_optimizer(loss_fn, p, key)
+        self.n_features_in_ = p
 
-        for epoch in trange(150):
+        stop, screening, msg, d = knock_off_check_parameters(n, p, n1, d)
+
+        if stop:
+            # raise ValueError(msg)
+            print(msg)
+            self.alpha_indices_ = []
+            self.n_features_out_ = 0
+            return self
+
+        if screening:
+            print("Starting screening")
+
+            s1, s2 = generate_random_sets(n, n1, key)
+            X1, y1 = X[s1, :], y[s1]
+            X2, y2 = X[s2, :], y[s2]
+
+            screened_indices = self.screen(
+                X1, y1, d
+            )
+            X2 = X2[:, screened_indices]
+
+        else:
+            print("No screening")
+            X2, y2 = X, y
+            screened_indices = np.arange(p)
+
+        # Compute knock-off variables
+        Xhat = get_equi_features(X2, key)
+        X2 = np.concatenate([X2, Xhat], axis=1)
+
+        loss_fn = self.compute_loss_fn(X2, y2)
+        step_function, opt_state, get_beta = self.set_optimizer(loss_fn, 2*d, key)
+        
+        error_tmp = []
+        beta_max = []
+        beta_min = []
+        prev = np.inf
+        for epoch in trange(max_epoch):
             value, opt_state = step_function(epoch, opt_state)
+            error_tmp.append(float(value))
+            beta_max.append(float(get_beta(opt_state).max()))
+            beta_min.append(float(get_beta(opt_state).min()))
+            if abs(value - prev) < eps_stop:
+                break
+            else:
+                prev = value
 
         self.beta_ = get_beta(opt_state)
 
+        self.wjs_ =   self.beta_[:d] - self.beta_[d:]
+        alpha_thres = alpha_threshold(self.alpha, self.wjs_, screened_indices)
+
+        self.alpha_indices_ = alpha_thres[0]
+        self.t_alpha_ = alpha_thres[1]
+        self.n_features_out_ = alpha_thres[2]
+        
         import pdb
 
         pdb.set_trace()
@@ -162,7 +220,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             case opt if opt.__class__ == OptimizerState:
                 init, update, params = opt
             case _:
-                error_msg = f"Unkown optimizer: {opt}, should be known string or of OptimizerState class"
+                error_msg = f"Unkown optimizer: {opt}, should be a known string or of OptimizerState class"
                 raise ValueError(error_msg)
 
         return init, update, params
@@ -173,33 +231,64 @@ class DCLasso(BaseEstimator, TransformerMixin):
         opt_state = opt_init(beta)
 
         def step(step, opt_state):
-            value, grads = value_and_grad(loss_fn)(get_params(opt_state))
+            # value, grads = value_and_grad(loss_fn)(get_params(opt_state))
+            grads = grad(loss_fn)(get_params(opt_state))
             opt_state = opt_update(step, grads, opt_state)
             states_flat, tree, subtrees = opt_state
             # we might have to be careful of the ordering with the positivity constraint
             new_states_flat = (apply_at(pos_proj, [0], states_flat[0]),)
             opt_state = OptimizerState(new_states_flat, tree, subtrees)
+            value = loss_fn(get_params(opt_state))
             return value, opt_state
 
         return step, opt_state, get_params
 
-    def compute_loss_fn(self, X, y):
-        D = self.get_assoc
+    def screen(self, X, y, d):
 
+        Dxy = self.D(X, y, **self.ms_kwargs)
+        screened_indices = top_k(Dxy, d)[1]
+        return screened_indices
+
+    def compute_loss_fn(self, X, y):
         if self.measure_stat in kernel_am:
             self.ms_kwargs["precompute"] = compute_kernels_for_am(
                 X, y, self.kernel, **self.ms_kwargs
             )
-        # D = jit(D)
-        Dxy = D(X, y, **self.ms_kwargs)
-        # import pdb; pdb.set_trace()
-        Dxx = D(X)#, **self.ms_kwargs)
+
+        Dxy = self.D(X, y, **self.ms_kwargs)
+        Dxx = self.D(X, **self.ms_kwargs)
+
         def loss(b):
-            xy_term = (b * Dxy).sum()
-            xx_term = (b * (Dxx * b).T).sum()
-            return xy_term + xx_term / 2 + self.penalty_func(b)
+            xy_term = - (b * Dxy).sum()
+            xx_term = 0.5 * (b * (Dxx * b).T).sum()
+            return xy_term + xx_term + self.penalty_func(b)
 
         return loss
+
+
+def alpha_threshold(alpha, wjs, indices):
+    """
+    Computes the selected features with respect to alpha.
+    Parameters
+    ----------
+    alpha : threshold value to use for post inference selection.
+    Returns
+    -------
+    A 3 element tuple where:
+        1 - indices corresponding to indexes of the chosen features in
+        the original array.
+        2 - the threshold value.
+        3 - the number of selected features.
+    """
+    alpha_indices_, t_alpha_ = threshold_alpha(
+        wjs, indices, alpha
+    )
+    if len(alpha_indices_):
+        print("selected features: ", alpha_indices_)
+    else:
+        print("No features were selected, returning empty set.")
+    n_features_out_ = len(alpha_indices_)
+    return alpha_indices_, t_alpha_, n_features_out_
 
 
 def apply_at(fn, pos_lst, iterable):
@@ -252,3 +341,40 @@ def compute_kernels_for_am(X, y, kernel, **kwargs):
     Kx = vmap(precompX)(indicesX)
     Ky = vmap(precompY)(indicesY)
     return Kx, Ky
+
+def threshold_alpha(Ws, w_indice, alpha):
+    """
+    Computes the set defined by equation 3.8
+    Parameters
+    ----------
+    Ws : list like object corresponding to the estimator W_j
+        for each feature.
+    w_indice : numpy array like object corresponding to the indices
+    of the W_j in the original dataset.
+    alpha : float between 0 and 1. Sets the FDR rate.
+    Returns
+    -------
+    indices : numpy array like corresponding to the selected features.
+    t_alpha : float, which is the threshold used to select the set of active
+    features.
+    """
+    ts = np.sort(abs(Ws))
+
+    def fraction_3_6(t):
+        num = (Ws <= -abs(t)).sum() + 1
+        den = max((Ws >= abs(t)).sum(), 1)
+        return num / den
+
+    fraction_3_6_v = npy.vectorize(fraction_3_6)
+    fdp = fraction_3_6_v(ts)
+
+    t_alpha = np.where(fdp <= alpha)
+    if t_alpha[0].size == 0:
+        # no one selected..
+        print("alpha_min set to np.inf, no one selected...")
+        t_alpha_min = np.inf
+    else:
+        t_alpha_min = min(ts[t_alpha])
+    indices = w_indice[np.where(Ws >= t_alpha_min)[0]]
+    import pdb; pdb.set_trace()
+    return indices, t_alpha

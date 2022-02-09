@@ -9,7 +9,7 @@ params.mode = "classification"
 config = file("${params.out}/config.yaml")
 mode = params.mode
 
-num_samples = [100]
+num_samples = [400]
 num_features = [500]
 
 simulation_models = ['categorical_1']

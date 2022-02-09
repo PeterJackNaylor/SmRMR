@@ -22,9 +22,9 @@ stg:
   sigmas: [0.1, 0.2, 0.3, 0.5, 1.0]
   lambdas: [5e-5, 5e-4, 5e-3, 5e-2, 5e-1]
 dclasso:
-  alpha: [0.1]
+  alpha: [0.5]
   measure_stat: ["HSIC"]
   optimizer: ["SGD"]
   kernel: ["linear"]
-  penalty: ["scad"]
-
+  penalty: ["l1"]
+  n1: [0.3]

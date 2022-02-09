@@ -33,6 +33,7 @@ alphas = param_grid['alpha']
 optimizers = param_grid['optimizer']
 kernels = param_grid['kernel']
 penalties = param_grid['penalty']
+n1 = param_grid['n1'][0]
 # Run algorithm
 ############################
 
@@ -49,4 +50,4 @@ for ms in measure_stats:
             penalty = penalty,
             optimizer = opt
           )
-          dl.fit(X, y)
+          dl.fit(X, y, n1, d=None)
