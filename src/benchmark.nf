@@ -4,7 +4,7 @@ nextflow.enable.dsl = 2
 /////////////////////////////////////////////////////////
 params.out = '.'
 params.splits = 5
-params.mode = "classification"
+params.mode = "regression"
 
 config = file("${params.out}/config.yaml")
 mode = params.mode
@@ -12,7 +12,7 @@ mode = params.mode
 num_samples = [400]
 num_features = [500]
 
-simulation_models = ['categorical_1']
+simulation_models = ['linear_0']
 feature_selection_algorithms = ["dclasso"] //'all_features', "hsic_lasso"
 model_algorithms = ['random_forest'] // 'logistic_regression', 'random_forest', 'svc', 'knn'
 performance_metrics = ['tpr_fpr', 'features_tpr_fpr'] //'auc_roc',

@@ -23,8 +23,8 @@ stg:
   lambdas: [5e-5, 5e-4, 5e-3, 5e-2, 5e-1]
 dclasso:
   alpha: [0.5]
-  measure_stat: ["HSIC"]
-  optimizer: ["SGD"]
+  measure_stat: ["DC"]
+  optimizer: ["adam"]
   kernel: ["linear"]
-  penalty: ["l1"]
+  penalty: ["scad"]
   n1: [0.3]
