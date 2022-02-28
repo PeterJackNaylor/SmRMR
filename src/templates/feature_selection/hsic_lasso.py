@@ -3,7 +3,7 @@
 Input variables:
   - TRAIN_NPZ: path to a .npz file containing three elements: an X matrix, a y vector,
     and a featnames vector (optional)
-  - PARAMS_JSON: path to a json file with the hyperparameters
+  - PARAMS_FILE: path to a json file with the hyperparameters
     - num_feat
     - B
     - M
