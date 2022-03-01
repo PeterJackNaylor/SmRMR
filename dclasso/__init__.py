@@ -1,4 +1,3 @@
-import jaxkern
 from ._version import __version__
 from .dc_lasso import DCLasso
 
