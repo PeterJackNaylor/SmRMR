@@ -17,9 +17,9 @@ def scad(theta, lamb=0.5, a=3.7):
         lamb * abs_theta,
         np.where(
             abs_theta < a * lamb,
-            (2 * a * lamb * abs_theta - abs_theta ** 2 - lamb ** 2) / (2 * a - 2),
-            0.5 * (a + 1) * lamb ** 2
-        )
+            (2 * a * lamb * abs_theta - abs_theta**2 - lamb**2) / (2 * a - 2),
+            0.5 * (a + 1) * lamb**2,
+        ),
     )
     return pen.sum()
 
@@ -27,11 +27,10 @@ def scad(theta, lamb=0.5, a=3.7):
 def mcp(theta, lamb=0.5, b=3):
     abs_theta = np.absolute(theta)
     pen = lamb * np.where(
-        abs_theta < lamb * b,
-        abs_theta - abs_theta ** 2 / (2 * b * lamb),
-        0.5 * b 
+        abs_theta < lamb * b, abs_theta - abs_theta**2 / (2 * b * lamb), 0.5 * b
     )
     return pen.sum()
+
 
 penalty_dic = {"none": none, "l1": lasso, "scad": scad, "mcp": mcp}
 

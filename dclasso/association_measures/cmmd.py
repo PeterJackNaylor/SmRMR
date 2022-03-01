@@ -128,6 +128,6 @@ def cMMD_index(X, group_idx, kernel_name="gaussian", sigma=None):
 
     Kx = kernel(X, **kernel_params)
 
-    mmd_matrix = group_estimates.sum() / n - Kx.sum() / (n ** 2)
+    mmd_matrix = group_estimates.sum() / n - Kx.sum() / (n**2)
 
     return mmd_matrix

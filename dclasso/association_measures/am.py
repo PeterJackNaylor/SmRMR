@@ -1,13 +1,15 @@
 import jax.numpy as np
-#from tqdm import trange
-from jax import vmap#, pmap
+
+# from tqdm import trange
+from jax import vmap  # , pmap
 from jax import jit
-import jax
 from tqdm import trange
-class AM():
+
+
+class AM:
     def __call__(self, X, Y=None, max_batch=10000, **args):
         n, d = X.shape
-        y_1d = True if Y is not None else False 
+        y_1d = True if Y is not None else False
         if y_1d:
             ny, nd = Y.shape
             assert n == ny
@@ -30,14 +32,14 @@ class AM():
 
             # we only want to give indivual sliced arrays and not the full one..
             del args["precompute"]
+
             @jit
             def func_with_indices(el):
                 i, j = el
-                return self.method(
-                    X[:, i], Y[:, j],
-                    precompute=(Kx[i], Ky[j]), **args
-                )
+                return self.method(X[:, i], Y[:, j], precompute=(Kx[i], Ky[j]), **args)
+
         else:
+
             @jit
             def func_with_indices(el):
                 i, j = el
@@ -45,12 +47,7 @@ class AM():
 
         batch_mode = determine_batch_mode(max_batch, n_indices)
 
-        result = compute(
-            func_with_indices,
-            indices,
-            batch_mode,
-            max_batch,
-            n_indices)
+        result = compute(func_with_indices, indices, batch_mode, max_batch, n_indices)
 
         # lax map seems to be so slow...
         # result = jax.lax.map(func_with_indices, indices)
@@ -64,6 +61,7 @@ class AM():
 
         return result
 
+
 def determine_batch_mode(batch_size, n):
     if not batch_size:
         batch_mode = False
@@ -74,14 +72,16 @@ def determine_batch_mode(batch_size, n):
             batch_mode = True
     return batch_mode
 
+
 def compute(func, ind, batch_mode, bs, n_ind):
 
     if not batch_mode:
         result = vmap(func)(ind)
     else:
         ix, iy = ind
+
         def helper(i):
-            return vmap(func)((ix[i:(i+bs)],iy[i:(i+bs)]))
+            return vmap(func)((ix[i : (i + bs)], iy[i : (i + bs)]))
+
         result = np.concatenate([helper(i) for i in trange(0, n_ind, bs)])
     return result
-        

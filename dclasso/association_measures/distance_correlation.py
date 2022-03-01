@@ -1,8 +1,10 @@
 # from dcor import distance_correlation as dc
 from .am import AM
 import jax.numpy as np
+
 # import dcor
 from jax import vmap
+
 
 def distance_corr2(X, Y):
     """
@@ -41,9 +43,12 @@ def distance_corr2(X, Y):
 
     return dc_stats
 
+
 # @jax.jit
 def p_distance(x: np.array, y: np.array, p: int) -> float:
     return (x - y) ** p
+
+
 # @jax.jit
 def sqeuclidean_distance(x: np.array, y: np.array) -> float:
     return np.sum((x - y) ** 2)
@@ -53,11 +58,13 @@ def sqeuclidean_distance(x: np.array, y: np.array) -> float:
 def euclidean_distance(x: np.array, y: np.array) -> float:
     return np.sqrt(sqeuclidean_distance(x, y))
 
+
 # @functools.partial(jax.jit, static_argnums=(0))
 def distmat(x: np.ndarray, y: np.ndarray, p: int) -> np.ndarray:
     """distance matrix"""
     # return vmap(lambda x1: vmap(lambda y1: p_distance(x1, y1, p))(y))(x)
     return vmap(lambda x1: vmap(lambda y1: sqeuclidean_distance(x1, y1))(y))(x)
+
 
 # pdist squareform
 # @jax.jit
@@ -77,28 +84,29 @@ def fill_diagonal(a, val):
     i, j = np.diag_indices(min(a.shape[-2:]))
     return a.at[..., i, j].set(val)
 
+
 def pdist_A(X, Y, p, unbiased=True):
-    ## https://dcor.readthedocs.io/en/latest/theory.html#properties
+    # https://dcor.readthedocs.io/en/latest/theory.html#properties
     n = X.shape[0]
     A = pdist_p(X, Y, p)
     if unbiased:
         A_1 = np.tile(A.sum(axis=1), (n, 1)) / (n - 2)
-        A_0 = np.tile(A.sum(axis=0), (1, n)).reshape(n,n, order='F') / (n - 2)
+        A_0 = np.tile(A.sum(axis=0), (1, n)).reshape(n, n, order="F") / (n - 2)
         A = A - A_0 - A_1 + A.sum() / ((n - 1) * (n - 2))
         A = fill_diagonal(A, 0)
     else:
         A_1 = np.tile(A.mean(axis=1), (n, 1))
-        A_0 = np.tile(A.mean(axis=0), (1, n)).reshape(n,n, order='F')
+        A_0 = np.tile(A.mean(axis=0), (1, n)).reshape(n, n, order="F")
         A = A - A_0 - A_1 + A.mean()
     return A
+
+
 class dcor(AM):
-    def method(
-        self, X, Y, precompute=None, order_x=2, order_y=2, **args
-    ):
+    def method(self, X, Y, precompute=None, order_x=2, order_y=2, **args):
         unbiased = False
         n = X.shape[0]
-        # we could save some computation by saving Kx and Ky, because we could compute them
-        # once instead of d*d.
+        # we could save some computation by saving Kx and Ky, because we could compute
+        # them once instead of d*d.
         if precompute is None:
             Dx = pdist_A(X, X, p=order_x, unbiased=unbiased)
             Dy = pdist_A(Y, Y, p=order_y, unbiased=unbiased)
@@ -107,18 +115,20 @@ class dcor(AM):
             Dy = precompute[1]
 
         cnorm = n * (n - 3) if unbiased else n ** 2
+
         def f(x, y):
             return np.sum(np.multiply(x, y)) / cnorm
 
         dcor_ = f(Dx, Dy)
         den = f(Dx, Dx) * f(Dy, Dy)
 
-        dcor_ = dcor_ / (den ** 0.5)
+        dcor_ = dcor_ / (den**0.5)
 
         return dcor_
 
 
 distance_corr = dcor()
+
 
 def unit_test():
     X = np.array([4, 2.54, 3, 9])

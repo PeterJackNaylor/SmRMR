@@ -14,13 +14,18 @@ from .association_measures.hsic import precompute_kernels
 from .association_measures.distance_correlation import pdist_p
 from .association_measures.kernel_tools import check_vector
 from .penalties import penalty_dic
-from .utils import generate_random_sets, knock_off_check_parameters, get_equi_features, generate_random_sets
+from .utils import (
+    knock_off_check_parameters,
+    get_equi_features,
+    generate_random_sets,
+)
 
 from optax._src.base import GradientTransformation
 
 available_am = ["PC", "DC", "TR", "HSIC", "cMMD", "pearson_correlation"]
 kernel_am = ["HSIC", "cMMD"]
 available_kernels = ["distance", "gaussian", "linear"]
+
 
 class DCLasso(BaseEstimator, TransformerMixin):
     """
@@ -53,7 +58,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.penalty = penalty
         self.optimizer = optimizer
         self.learning_rate = 0.001
-        self.lambda_ = 0.15 * .2
+        self.lambda_ = 0.15 * 0.2
         self.ms_kwargs = ms_kwargs if ms_kwargs else {}
         self.opt_kwargs = opt_kwargs if opt_kwargs else {}
 
@@ -77,15 +82,14 @@ class DCLasso(BaseEstimator, TransformerMixin):
         d: int = None,
         seed: int = 42,
         max_epoch: int = 151,
-        eps_stop:float = 1e-8,
-        init="random"
+        eps_stop: float = 1e-8,
+        init="random",
     ):
         self.precomputed_elements = False
         if seed:
             key = random.PRNGKey(seed)
 
-
-        ## we have to prescreen and split
+        # we have to prescreen and split
         X, y = check_X_y(X, y)
         X = np.asarray(X)
         n, p = X.shape
@@ -112,9 +116,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             X1, y1 = X[s1, :], y[s1]
             X2, y2 = X[s2, :], y[s2]
 
-            screened_indices = self.screen(
-                X1, y1, d
-            )
+            screened_indices = self.screen(X1, y1, d)
             X2 = X2[:, screened_indices]
 
         else:
@@ -127,9 +129,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
         X2 = np.concatenate([X2, Xhat], axis=1)
 
         loss_fn = self.compute_loss_fn(X2, y2)
-        beta = self.initialisation(2*d, key, init)
+        beta = self.initialisation(2 * d, key, init)
         step_function, opt_state = self.set_optimizer(loss_fn, beta)
-        
+
         error_tmp = []
         prev = np.inf
         for epoch in trange(max_epoch):
@@ -142,16 +144,13 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         self.beta_ = beta
 
-        self.wjs_ =   self.beta_[:d] - self.beta_[d:]
+        self.wjs_ = self.beta_[:d] - self.beta_[d:]
         alpha_thres = alpha_threshold(self.alpha, self.wjs_, screened_indices)
 
         self.alpha_indices_ = alpha_thres[0]
         self.t_alpha_ = alpha_thres[1]
         self.n_features_out_ = alpha_thres[2]
-        
-        import pdb
 
-        pdb.set_trace()
         print("what do we keep...?")
         return self
 
@@ -203,32 +202,35 @@ class DCLasso(BaseEstimator, TransformerMixin):
     def get_optimizer(self):
         opt = self.optimizer
         scheduler = optax.exponential_decay(
-            init_value=self.learning_rate, 
-            transition_steps=200,
-            decay_rate=0.99)
+            init_value=self.learning_rate, transition_steps=200, decay_rate=0.99
+        )
 
         match opt:
-            case  "SGD":
+            case "SGD":
                 optimizer = optax.chain(
                     optax.identity(),
                     optax.scale_by_schedule(scheduler),
                     optax.scale(-1.0),
-                    optax.keep_params_nonnegative()
+                    optax.keep_params_nonnegative(),
                 )
 
             case "adam":
                 # Combining gradient transforms using `optax.chain`.
                 optimizer = optax.chain(
                     optax.scale_by_adam(),  # Use the updates from adam.
-                    optax.scale_by_schedule(scheduler),  # Use the learning rate from the scheduler.
-                    # Scale updates by -1 since optax.apply_updates is additive and we want to descend on the loss.
+                    optax.scale_by_schedule(
+                        scheduler
+                    ),  # Use the learning rate from the scheduler.
+                    # Scale updates by -1 since optax.apply_updates is additive and we
+                    # want to descend on the loss.
                     optax.scale(-1.0),
                     optax.keep_params_nonnegative(),
                 )
             case opt if opt.__class__ == GradientTransformation:
                 optimizer = opt
             case _:
-                error_msg = f"Unkown optimizer: {opt}, should be a known string or of GradientTransformation class of the optax python package"
+                error_msg = f"Unkown optimizer: {opt}, should be a known string or of \
+                GradientTransformation class of the optax python package"
                 raise ValueError(error_msg)
 
         return optimizer
@@ -236,18 +238,14 @@ class DCLasso(BaseEstimator, TransformerMixin):
     def initialisation(self, p, key, init):
         match init:
             case "random":
-                beta = random.uniform(key, 
-                                    shape=(p,),
-                                    dtype="float32",
-                                    minval=0.0,
-                                    maxval=2.0)
+                beta = random.uniform(
+                    key, shape=(p,), dtype="float32", minval=0.0, maxval=2.0
+                )
             case "from_convex_solve":
                 # without penalty
                 beta = np.matmul(np.linalg.inv(self.Dxx), self.Dxy)
                 beta = pos_proj(beta)
         return beta
-        
-    
 
     def set_optimizer(self, loss_fn, beta):
         optimizer = self.get_optimizer()
@@ -284,7 +282,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.Dxx = self.D(X, **self.ms_kwargs)
 
         def loss(b):
-            xy_term = - (b * self.Dxy).sum()
+            xy_term = -(b * self.Dxy).sum()
             xx_term = 0.5 * (b * (self.Dxx * b).T).sum()
             return xy_term + xx_term + self.penalty_func(b)
 
@@ -305,9 +303,7 @@ def alpha_threshold(alpha, wjs, indices):
         2 - the threshold value.
         3 - the number of selected features.
     """
-    alpha_indices_, t_alpha_ = threshold_alpha(
-        wjs, indices, alpha
-    )
+    alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha)
     if len(alpha_indices_):
         print("selected features: ", alpha_indices_)
     else:
@@ -366,17 +362,19 @@ def compute_kernels_for_am(X, y, kernel, **kwargs):
     Ky = vmap(precompY)(indicesY)
     return Kx, Ky
 
+
 def compute_distance_for_am(X, y, **kwargs):
     # mostly for DC
     _, p = X.shape
     # mostly for HSIC and cMMD
     indicesX = np.arange(p)
     indicesY = np.arange(1)
-    p = kwargs['order_x'] if 'order_x' in kwargs.keys() else 2
-    q = kwargs['order_x'] if 'order_y' in kwargs.keys() else 2
+    p = kwargs["order_x"] if "order_x" in kwargs.keys() else 2
+    q = kwargs["order_x"] if "order_y" in kwargs.keys() else 2
 
     def jit_precompute_dist_x(x):
         return pdist_p(x, x, p=p)
+
     def jit_precompute_dist_y(x):
         return pdist_p(x, x, p=q)
 
@@ -415,7 +413,6 @@ def threshold_alpha(Ws, w_indice, alpha):
         num = (Ws <= -abs(t)).sum() + 1
         den = max((Ws >= abs(t)).sum(), 1)
         return num / den
-    
 
     fraction_3_6_v = npy.vectorize(fraction_3_6)
     fdp = fraction_3_6_v(ts)
@@ -431,18 +428,18 @@ def threshold_alpha(Ws, w_indice, alpha):
 
     ########################################
     # For debugging purposes
-    def numerator(t):
-        num = (Ws <= -abs(t)).sum() + 1
-        return num
-    
-    def denominator(t):
-        den = max((Ws >= abs(t)).sum(), 1)
-        return den
-    nume_v = npy.vectorize(numerator)
-    denomi_3_6_v = npy.vectorize(denominator)
-    nn = nume_v(ts)
-    dd = denomi_3_6_v(ts)
+    # def numerator(t):
+    #    num = (Ws <= -abs(t)).sum() + 1
+    #    return num
+
+    # def denominator(t):
+    #    den = max((Ws >= abs(t)).sum(), 1)
+    #    return den
+
+    # nume_v = npy.vectorize(numerator)
+    # denomi_3_6_v = npy.vectorize(denominator)
+    # nn = nume_v(ts)
+    # dd = denomi_3_6_v(ts)
     #######################################
 
-    import pdb; pdb.set_trace()
     return indices, t_alpha

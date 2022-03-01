@@ -25,7 +25,7 @@ def get_arccos(X):
         xr = X[r]
         X_r = (X - xr).astype(float)  # dealing with categorical values
         cross = np.dot(X_r, X_r.T)
-        row_norm = np.sqrt(np.sum(X_r ** 2, axis=1))
+        row_norm = np.sqrt(np.sum(X_r**2, axis=1))
 
         outer_norm = np.outer(row_norm, row_norm)
 
@@ -83,9 +83,9 @@ def projection_corr(X, Y):
         a_x, A_x = get_arccos(X[:, i : (i + 1)])
         a_y, A_y = get_arccos(Y[:, 0:1])
 
-        S_xy = np.sum(A_x * A_y) / (nx ** 3)
-        S_xx = np.sum(A_x ** 2) / (nx ** 3)
-        S_yy = np.sum(A_y ** 2) / (nx ** 3)
+        S_xy = np.sum(A_x * A_y) / (nx**3)
+        S_xx = np.sum(A_x**2) / (nx**3)
+        S_yy = np.sum(A_y**2) / (nx**3)
 
         if S_xx * S_yy == 0.0:
             corr = 0.0
