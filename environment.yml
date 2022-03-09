@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   # project-specific packages
+  - optax
   # required
   - codecov
   - dvc
@@ -15,7 +16,7 @@ dependencies:
   - nextflow
   - pip
   - pytest
-  - python=3
+  - python=3.10
   - r-irkernel
   # usually good to have
   - jax

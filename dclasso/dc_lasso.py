@@ -83,7 +83,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         seed: int = 42,
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
-        init="random",
+        init="from_convex_solve",
     ):
         self.precomputed_elements = False
         if seed:
