@@ -1,4 +1,5 @@
-import numpy as np
+import jax.numpy as np
+from .am import AM
 
 
 def get_arccos(X):
@@ -17,7 +18,7 @@ def get_arccos(X):
     """
     # X is a 2-d array
 
-    n, p = X.shape
+    n = X.shape[0]
     cos_a = np.zeros([n, n, n])
 
     for r in range(n):
@@ -48,7 +49,7 @@ def get_arccos(X):
     return a, A
 
 
-def projection_corr(X, Y):
+def projection_corr2(X, Y):
     """
     Computes the Projection Correlation between X and Y as defined
     by *Model-Free Feature Screening and FDR Control
@@ -93,3 +94,27 @@ def projection_corr(X, Y):
             corr = np.sqrt(S_xy / np.sqrt(S_xx * S_yy))
         pr_stats[i] = corr
     return pr_stats
+
+
+def pc(X, Y):
+    nx = X.shape
+    _, A_x = get_arccos(X)
+    _, A_y = get_arccos(Y)
+
+    S_xy = np.sum(A_x * A_y) / (nx**3)
+    S_xx = np.sum(A_x**2) / (nx**3)
+    S_yy = np.sum(A_y**2) / (nx**3)
+
+    if S_xx * S_yy == 0.0:
+        corr = 0.0
+    else:
+        corr = np.sqrt(S_xy / np.sqrt(S_xx * S_yy))
+    return corr
+
+
+class projection_corr_obj(AM):
+    def method(self, X, Y, **args):
+        return pc(X, Y)
+
+
+projection_corr = projection_corr_obj()
