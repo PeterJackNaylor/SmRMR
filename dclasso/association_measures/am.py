@@ -1,8 +1,8 @@
-import jax.numpy as np
+from abc import abstractmethod
 
-# from tqdm import trange
-from jax import vmap  # , pmap
+from jax import vmap
 from jax import jit
+import jax.numpy as np
 from tqdm import trange
 
 
@@ -30,7 +30,7 @@ class AM:
             else:
                 Ky = Kx
 
-            # we only want to give indivual sliced arrays and not the full one..
+            # we only want to give individual sliced arrays and not the full one..
             del args["precompute"]
 
             @jit
@@ -60,6 +60,10 @@ class AM:
             result = result_r
 
         return result
+
+    @abstractmethod
+    def method(self, X, Y, **args):
+        return NotImplemented
 
 
 def determine_batch_mode(batch_size, n):

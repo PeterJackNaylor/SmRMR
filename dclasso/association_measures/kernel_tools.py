@@ -1,6 +1,15 @@
 import jax.numpy as np
 
 
+def precompute_kernels(X, Y=None, kernel="gaussian", sigma=None, center_kernel=True):
+    kernel, kernel_params = get_kernel_function(kernel, nfeats=sigma)
+    if center_kernel:
+        Kx = center(kernel(X, Y, **kernel_params))
+    else:
+        Kx = kernel(X, Y, **kernel_params)
+    return Kx
+
+
 def get_kernel_function(name, nfeats=1):
     """
     Get the correct kernel function given the name.
