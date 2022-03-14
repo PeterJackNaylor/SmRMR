@@ -83,11 +83,11 @@ class DCLasso(BaseEstimator, TransformerMixin):
         seed: int = 42,
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
+        mode: str = "competitive",
         init="from_convex_solve",
     ):
         self.precomputed_elements = False
-        if seed:
-            key = random.PRNGKey(seed)
+        key = random.PRNGKey(seed)
 
         # we have to prescreen and split
         X, y = check_X_y(X, y)
@@ -126,23 +126,34 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
-        X2 = np.concatenate([X2, Xhat], axis=1)
 
-        loss_fn = self.compute_loss_fn(X2, y2)
-        beta = self.initialisation(2 * d, key, init)
-        step_function, opt_state = self.set_optimizer(loss_fn, beta)
+        if mode == "competitive":
+            Xs = [np.concatenate([X2, Xhat], axis=1)]
+        else:
+            Xs = [X2, Xhat]
 
-        error_tmp = []
-        prev = np.inf
-        for epoch in trange(max_epoch):
-            value, beta, opt_state = step_function(beta, opt_state)
-            error_tmp.append(float(value))
-            if abs(value - prev) < eps_stop:
-                break
-            else:
-                prev = value
+        betas = []
+        for x in Xs:
+            loss_fn = self.compute_loss_fn(x, y2)
+            beta = self.initialisation(x.shape[1], key, init)
+            step_function, opt_state = self.set_optimizer(loss_fn, beta)
 
-        self.beta_ = beta
+            error_tmp = []
+            prev = np.inf
+            for _ in trange(max_epoch):
+                value, beta, opt_state = step_function(beta, opt_state)
+                error_tmp.append(float(value))
+                if abs(value - prev) < eps_stop:
+                    break
+                else:
+                    prev = value
+
+            betas.append(beta)
+
+        if mode == "competitive":
+            self.beta_ = betas[0]
+        else:
+            self.beta_ = np.concatenate([betas[0], betas[1]], axis=0)
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
         alpha_thres = alpha_threshold(self.alpha, self.wjs_, screened_indices)
