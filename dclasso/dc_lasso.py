@@ -424,7 +424,7 @@ def threshold_alpha(Ws, w_indice, alpha):
         t_alpha_min = np.inf
     else:
         t_alpha_min = min(ts[t_alpha])
-    indices = w_indice[np.where(Ws >= t_alpha_min)[0]]
+    indices = w_indice[Ws >= t_alpha_min]
 
     ########################################
     # For debugging purposes

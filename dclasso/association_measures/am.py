@@ -7,7 +7,11 @@ from tqdm import trange
 
 
 class AM:
-    def __call__(self, X, Y=None, max_batch=10000, **args):
+    def __init__(self, batch_size=10000):
+        self.batch_size = batch_size
+
+    def __call__(self, X, Y=None, max_batch=None, **args):
+        batch_size = max_batch if max_batch else self.batch_size
         n, d = X.shape
         y_1d = True if Y is not None else False
         if y_1d:
@@ -30,7 +34,7 @@ class AM:
             else:
                 Ky = Kx
 
-            # we only want to give indivual sliced arrays and not the full one..
+            # we only want to give individual sliced arrays and not the full one..
             del args["precompute"]
 
             @jit
@@ -45,9 +49,9 @@ class AM:
                 i, j = el
                 return self.method(X[:, i], Y[:, j], **args)
 
-        batch_mode = determine_batch_mode(max_batch, n_indices)
+        batch_mode = determine_batch_mode(batch_size, n_indices)
 
-        result = compute(func_with_indices, indices, batch_mode, max_batch, n_indices)
+        result = compute(func_with_indices, indices, batch_mode, batch_size, n_indices)
 
         # lax map seems to be so slow...
         # result = jax.lax.map(func_with_indices, indices)
