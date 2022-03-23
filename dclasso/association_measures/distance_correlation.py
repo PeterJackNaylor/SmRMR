@@ -1,4 +1,5 @@
 # from dcor import distance_correlation as dc
+import jax
 from .am import AM
 import jax.numpy as np
 
@@ -46,7 +47,11 @@ def distance_corr2(X, Y):
 
 # @jax.jit
 def p_distance(x: np.array, y: np.array, p: int) -> float:
-    return (x - y) ** p
+    return np.sum((x - y) ** p)
+
+
+def p_euclidian_distance(x: np.array, y: np.array, p: int) -> float:
+    return p_distance(x, y, p) ** (1 / p)
 
 
 # @jax.jit
@@ -62,8 +67,8 @@ def euclidean_distance(x: np.array, y: np.array) -> float:
 # @functools.partial(jax.jit, static_argnums=(0))
 def distmat(x: np.ndarray, y: np.ndarray, p: int) -> np.ndarray:
     """distance matrix"""
-    # return vmap(lambda x1: vmap(lambda y1: p_distance(x1, y1, p))(y))(x)
-    return vmap(lambda x1: vmap(lambda y1: sqeuclidean_distance(x1, y1))(y))(x)
+    return vmap(lambda x1: vmap(lambda y1: p_euclidian_distance(x1, y1, p))(y))(x)
+    # return vmap(lambda x1: vmap(lambda y1: euclidean_distance(x1, y1))(y))(x)
 
 
 # pdist squareform
@@ -85,7 +90,7 @@ def fill_diagonal(a, val):
     return a.at[..., i, j].set(val)
 
 
-def pdist_A(X, Y, p, unbiased=True):
+def pdist_A(X, Y, p, unbiased=False):
     # https://dcor.readthedocs.io/en/latest/theory.html#properties
     n = X.shape[0]
     A = pdist_p(X, Y, p)
@@ -97,14 +102,14 @@ def pdist_A(X, Y, p, unbiased=True):
     else:
         A_1 = np.tile(A.mean(axis=1), (n, 1))
         A_0 = np.tile(A.mean(axis=0), (1, n)).reshape(n, n, order="F")
-        A = A - A_0 - A_1 + A.mean()
+        mean = A.mean()
+        A = A - A_0 - A_1 + mean
     return A
 
 
 class dcor(AM):
     def method(self, X, Y, precompute=None, order_x=2, order_y=2, **args):
         unbiased = False
-        n = X.shape[0]
         # we could save some computation by saving Kx and Ky, because we could compute
         # them once instead of d*d.
         if precompute is None:
@@ -114,24 +119,31 @@ class dcor(AM):
             Dx = precompute[0]
             Dy = precompute[1]
 
-        cnorm = n * (n - 3) if unbiased else n ** 2
-
-        def f(x, y):
-            return np.sum(np.multiply(x, y)) / cnorm
-
-        dcor_ = f(Dx, Dy)
-        den = f(Dx, Dx) * f(Dy, Dy)
+        dcor_ = np.multiply(Dx, Dy).sum()
+        den = np.multiply(Dx, Dx).sum() * np.multiply(Dy, Dy).sum()
 
         dcor_ = dcor_ / (den**0.5)
-
+        dcor_ = dcor_**0.5
         return dcor_
 
 
 distance_corr = dcor()
 
 
-def unit_test():
+def test_positivity():
+    key = jax.random.PRNGKey(42)
+    ns = 1000
+    p = 100
+    X = jax.random.normal(key, shape=(ns, p))
+    Y = jax.random.normal(key, shape=(ns, p))
+    for i in range(ns):
+        assert distance_corr.method(X[i], Y[i]) >= 0
+        assert 1 >= distance_corr.method(X[i], Y[i])
+
+
+def random_value_test():
     X = np.array([4, 2.54, 3, 9])
     Y = np.array([0, -12.54, 103, 91])
     val = distance_corr.method(X, Y)
+    print(val)
     assert 0.5822709405205625 == val
