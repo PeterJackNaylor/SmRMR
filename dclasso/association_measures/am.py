@@ -5,6 +5,8 @@ from jax import jit
 import jax.numpy as np
 from tqdm import trange
 
+import numpy as onp
+
 
 class AM:
     def __call__(self, X, Y=None, max_batch=10000, **args):
@@ -17,6 +19,8 @@ class AM:
         else:
             Y = X
             nd = d
+
+        y_levels = onp.unique(Y)
 
         if not y_1d:
             indices = np.triu_indices(d, k=0, m=nd)
@@ -36,14 +40,20 @@ class AM:
             @jit
             def func_with_indices(el):
                 i, j = el
-                return self.method(X[:, i], Y[:, j], precompute=(Kx[i], Ky[j]), **args)
+                return self.method(
+                    X[:, i],
+                    Y[:, j],
+                    precompute=(Kx[i], Ky[j]),
+                    y_levels=y_levels,
+                    **args
+                )
 
         else:
 
             @jit
             def func_with_indices(el):
                 i, j = el
-                return self.method(X[:, i], Y[:, j], **args)
+                return self.method(X[:, i], Y[:, j], y_levels=y_levels, **args)
 
         batch_mode = determine_batch_mode(max_batch, n_indices)
 

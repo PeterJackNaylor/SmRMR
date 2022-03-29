@@ -9,6 +9,7 @@ class cMMD_object(AM):
         self,
         X,
         Y,
+        y_levels,
         precompute=None,
         kernel="gaussian",
         normalised=False,
@@ -17,27 +18,16 @@ class cMMD_object(AM):
     ):
 
         n = X.shape[0]
-        m = Y.shape[0]
+        cmmd = 0
 
-        if precompute is None:
-            Kx = precompute_kernels(
-                X, kernel=kernel, sigma=sigma, center_kernel=normalised
-            )
-            Ky = precompute_kernels(
-                Y, kernel=kernel, sigma=sigma, center_kernel=normalised
-            )
-        else:
-            Kx = precompute[0]
-            Ky = precompute[1]
+        Kx = precompute_kernels(X, kernel=kernel, sigma=sigma, center_kernel=normalised)
 
-        Kxy = precompute_kernels(
-            X, Y, kernel=kernel, sigma=sigma, center_kernel=normalised
-        )
+        for y in y_levels:
+            cmmd += np.where(Y == y, x=Kx, y=0).sum() / sum(Y == y)
 
-        mmd2 = 1 / n**2 * Kx.sum() + 1 / m**2 * Ky.sum() - 2 / (n * m) * Kxy.sum()
-        mmd = np.sqrt(mmd2)
+        cmmd = cmmd / n - 1 / n**2 * Kx.sum()
 
-        return mmd
+        return cmmd
 
 
 cMMD = cMMD_object()
