@@ -1,9 +1,11 @@
-import jax.numpy as np
+from abc import abstractmethod
 
-# from tqdm import trange
-from jax import vmap  # , pmap
+from jax import vmap
 from jax import jit
+import jax.numpy as np
 from tqdm import trange
+
+import numpy as onp
 
 
 class AM:
@@ -21,6 +23,8 @@ class AM:
         else:
             Y = X
             nd = d
+
+        y_levels = onp.unique(Y)
 
         if not y_1d:
             indices = np.triu_indices(d, k=0, m=nd)
@@ -40,14 +44,20 @@ class AM:
             @jit
             def func_with_indices(el):
                 i, j = el
-                return self.method(X[:, i], Y[:, j], precompute=(Kx[i], Ky[j]), **args)
+                return self.method(
+                    X[:, i],
+                    Y[:, j],
+                    precompute=(Kx[i], Ky[j]),
+                    y_levels=y_levels,
+                    **args
+                )
 
         else:
 
             @jit
             def func_with_indices(el):
                 i, j = el
-                return self.method(X[:, i], Y[:, j], **args)
+                return self.method(X[:, i], Y[:, j], y_levels=y_levels, **args)
 
         batch_mode = determine_batch_mode(batch_size, n_indices)
 
@@ -64,6 +74,10 @@ class AM:
             result = result_r
 
         return result
+
+    @abstractmethod
+    def method(self, X, Y, **args):
+        return NotImplemented
 
 
 def determine_batch_mode(batch_size, n):

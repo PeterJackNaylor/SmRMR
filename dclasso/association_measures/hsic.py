@@ -2,13 +2,7 @@ from .am import AM
 import jax.numpy as np
 
 # from jax import vmap
-from .kernel_tools import center, get_kernel_function
-
-
-def precompute_kernels(X, kernel="gaussian", sigma=None):
-    kernel, kernel_params = get_kernel_function(kernel, nfeats=sigma)
-    Kx = center(kernel(X, **kernel_params))
-    return Kx
+from .kernel_tools import precompute_kernels
 
 
 class HSIC_object(AM):

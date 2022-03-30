@@ -62,7 +62,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.ms_kwargs = ms_kwargs if ms_kwargs else {}
         self.opt_kwargs = opt_kwargs if opt_kwargs else {}
 
-    def D(self, x, y=None, **kwargs):
+    def _compute_assoc(self, x, y=None, **kwargs):
 
         args = {}
         if self.measure_stat in kernel_am:
@@ -71,7 +71,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         if self.normalise_input:
             x = x / np.linalg.norm(x, ord=2, axis=0)
 
-        assoc_func = self.get_association_measure()
+        assoc_func = self._get_assoc_func()
         return assoc_func(x, y, **args, **kwargs)
 
     def fit(
@@ -182,7 +182,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         return self.fit(X, y, **fit_params).transform(X, y)
 
-    def get_association_measure(self):
+    def _get_assoc_func(self):
         """Returns the correct association measure
         given the attribute in __init__.
         """
@@ -272,7 +272,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
     def screen(self, X, y, d):
 
-        Dxy = self.D(X, y, **self.ms_kwargs)
+        Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
         screened_indices = top_k(Dxy, d)[1]
 
         return screened_indices
@@ -289,8 +289,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 )
         # made as self so that they can re-used for the
         # initialisation
-        self.Dxy = self.D(X, y, **self.ms_kwargs)
-        self.Dxx = self.D(X, **self.ms_kwargs)
+        self.Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
+        self.Dxx = self._compute_assoc(X, **self.ms_kwargs)
 
         def loss(b):
             xy_term = -(b * self.Dxy).sum()
