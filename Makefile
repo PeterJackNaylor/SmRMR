@@ -16,6 +16,12 @@ setup: $(CONDA_ENV)
 docker_build: Dockerfile
 	docker build -t dclasso .
 
+screening:
+	$(CONDA_ACTIVATE); nextflow src/screening.nf --out results/screening -resume
+
+fdr_control:
+	$(CONDA_ACTIVATE); nextflow src/fdr_control.nf --out results/screening -resume
+
 benchmark: results/benchmark/config.yaml
 	$(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/config.yaml -resume
 

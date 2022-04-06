@@ -51,7 +51,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         super().__init__()
         self.alpha = alpha
         assert measure_stat in available_am, "measure_stat incorrect"
-        assert kernel in available_kernels, "kernel incorrect"
+        if measure_stat in kernel_am:
+            assert kernel in available_kernels, "kernel incorrect"
         self.measure_stat = measure_stat
         self.kernel = kernel
         self.normalise_input = normalise_input
@@ -115,13 +116,13 @@ class DCLasso(BaseEstimator, TransformerMixin):
             X1, y1 = X[s1, :], y[s1]
             X2, y2 = X[s2, :], y[s2]
 
-            screened_indices = self.screen(X1, y1, d)
-            X2 = X2[:, screened_indices]
+            self.screened_indices_ = self.screen(X1, y1, d)
+            X2 = X2[:, self.screened_indices_]
 
         else:
             print("No screening")
             X2, y2 = X, y
-            screened_indices = np.arange(p)
+            self.screened_indices_ = np.arange(p)
 
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
@@ -155,7 +156,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             self.beta_ = np.concatenate([betas[0], betas[1]], axis=0)
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
-        alpha_thres = alpha_threshold(self.alpha, self.wjs_, screened_indices)
+        alpha_thres = alpha_threshold(self.alpha, self.wjs_, self.screened_indices_)
 
         self.alpha_indices_ = alpha_thres[0]
         self.t_alpha_ = alpha_thres[1]
@@ -376,7 +377,6 @@ def compute_kernels_for_am(X, y, kernel, **kwargs):
 def compute_distance_for_am(X, y, **kwargs):
     # mostly for DC
     _, p = X.shape
-    # mostly for HSIC and cMMD
     indicesX = np.arange(p)
     indicesY = np.arange(1)
     p = kwargs["order_x"] if "order_x" in kwargs.keys() else 2

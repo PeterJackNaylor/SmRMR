@@ -26,4 +26,6 @@ dependencies:
   - r-tidyverse
   - pandas
   - scikit-learn
-  - seaborn
+  - plotly
+  - kaleido
+  # - seaborn

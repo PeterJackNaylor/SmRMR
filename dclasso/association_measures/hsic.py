@@ -16,7 +16,6 @@ class HSIC_object(AM):
         sigma=None,
         **args
     ):
-
         # we could save some computation by saving Kx and Ky, because we could
         # compute them once instead of d*d.
         if precompute is None:

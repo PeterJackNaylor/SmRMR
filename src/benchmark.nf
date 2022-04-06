@@ -14,6 +14,8 @@ mode = params.mode
 //model_algorithms = ['random_forest'] // 'logistic_regression', 'random_forest', 'svc', 'knn'
 // performance_metrics = ['tpr_fpr', 'features_tpr_fpr'] //'auc_roc',
 
+
+
 process simulate_data {
 
     tag "${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES})"
@@ -23,9 +25,12 @@ process simulate_data {
         each SIMULATION
         each NUM_SAMPLES
         each NUM_FEATURES
-
+        each REPEATS
     output:
         tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation.npz"), path('causal.npz')
+
+    when:
+        (NUM_SAMPLES == 500) || (NUM_SAMPLES < NUM_FEATURES) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))
 
     script:
         template "simulation/${SIMULATION}.py"
