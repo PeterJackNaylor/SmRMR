@@ -3,19 +3,10 @@ nextflow.enable.dsl = 2
 
 // Parameters
 /////////////////////////////////////////////////////////
-params.out = '.'
-
-num_samples = [100, 500]
-num_features = [100, 500]
 repeats = 0..(params.repeat-1)
 
-kernel = ["linear", "gaussian"]
-measure_stat = ["DC", "HSIC"]
-
 KERNEL_AM = ["HSIC"]
-FIRST_KERNEL = kernel[0]
-
-simulation_models = ['categorical_1', 'categorical_2']
+FIRST_KERNEL = params.kernel[0]
 
 include { simulate_data } from './benchmark.nf'
 
@@ -50,7 +41,7 @@ process plot {
 
 workflow {
     main:
-        simulate_data(simulation_models, num_samples, num_features, repeats)
-        screen(simulate_data.out, measure_stat, kernel)
+        simulate_data(params.simulation_models, params.num_samples, params.num_features, repeats)
+        screen(simulate_data.out, params.measure_stat, params.kernel)
         plot(screen.out.collectFile(skip: 1, keepHeader: true))
 }

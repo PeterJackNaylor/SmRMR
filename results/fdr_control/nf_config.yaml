@@ -1,0 +1,13 @@
+out: results/fdr_control
+repeat: 10
+num_samples: [100, 500]
+num_features: [100, 500]
+measure_stat:
+- "DC"
+- "HSIC"
+kernel: ["linear", "gaussian"]
+penalty: ["l1"] # "none", "scad", "mcp"]
+optimizer: ["SGD"] #, "adam"]
+simulation_models:
+- 'categorical_1'
+- 'categorical_2'
