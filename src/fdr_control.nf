@@ -7,11 +7,11 @@ params.out = '.'
 
 num_samples = [100, 500]
 num_features = [100, 500]
-repeats = 0..199
+repeats = 0..(params.repeat-1)
 
 kernel = ["linear", "gaussian"]
 measure_stat = ["DC", "HSIC"]
-penalty = ["none", "l1"]//, "scad", "mcp"]
+penalty = ["l1"]//, "scad", "mcp"]
 optimizer = ["SGD"]//, "adam"]
 
 

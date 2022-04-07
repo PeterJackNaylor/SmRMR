@@ -65,6 +65,7 @@ def color_dictionnary_fdr(name, kernel, only_kernel=True):
 
 
 inside_colors = {
+    "unspecified": "rgb(37,37,37)",
     "linear": "rgb(37,37,37)",
     "gaussian": "rgb(150,150,150)",
     "distance": "rgb(217,217,217)",

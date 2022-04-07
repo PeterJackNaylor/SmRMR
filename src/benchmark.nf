@@ -30,7 +30,7 @@ process simulate_data {
         tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation.npz"), path('causal.npz')
 
     when:
-        (NUM_SAMPLES == 500) || (NUM_SAMPLES < NUM_FEATURES) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))
+        (NUM_SAMPLES < NUM_FEATURES + 1) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))
 
     script:
         template "simulation/${SIMULATION}.py"

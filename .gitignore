@@ -3,7 +3,7 @@ work/
 env/
 .nextflow/
 .nextflow*
-
+./results
 ### Data files
 *.tsv
 *.csv

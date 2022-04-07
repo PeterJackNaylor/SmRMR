@@ -48,7 +48,7 @@ def main():
 
     datasets = np.unique(table["run"])
     kernels = list(np.unique(table["kernel"].dropna()))
-
+    table["kernel"] = table["kernel"].fillna("unspecified")
     for data in list(datasets):
         table_data = table.loc[table["run"] == data]
         groups = table_data.groupby(["n", "p", "AM", "kernel"])
