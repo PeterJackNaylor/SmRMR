@@ -144,6 +144,17 @@ def kernel_alpha(x1, x2=None, alpha=None):
     return result
 
 
+def kernel_sigmoid(x1, x2=None, gamma=None, coeff0=1):
+
+    x1 = check_vector(x1)
+    x2 = x1 if x2 is None else check_vector(x2)
+    gamma = 1.0 / len(x1) if gamma is None else gamma
+
+    x = gamma * np.dot(x1, x2.T) + coeff0
+
+    return 1 / (1 + np.exp(-x))
+
+
 def check_vector(x):
     """
     Checks wether the numpy array x needs to be expended
