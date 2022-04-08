@@ -3,7 +3,7 @@
 CONDA_ENV = ./env/
 CONDA_ACTIVATE = eval "$$(conda shell.bash hook)"; conda activate $(CONDA_ENV); export PYTHONPATH=`pwd`:$${PYTHONPATH}
 
-.PHONY: $(CONDA_ENV) clean setup jupyter
+.PHONY: $(CONDA_ENV) clean setup test jupyter
 
 ###############################
 # COMMANDS
@@ -17,6 +17,9 @@ docker_build: Dockerfile
 
 benchmark: results/benchmark/config.yaml
 	$(CONDA_ACTIVATE); nextflow src/benchmark.nf --out results/benchmark -resume
+
+test:
+	$(CONDA_ACTIVATE); pytest test
 
 $(CONDA_ENV): environment.yml
 	mamba env create --force --prefix $(CONDA_ENV) --file environment.yml
