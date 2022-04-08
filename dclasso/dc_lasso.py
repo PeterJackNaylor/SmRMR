@@ -76,7 +76,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self,
         X: npt.ArrayLike,
         y: npt.ArrayLike,
-        n1: float = 1,
+        n1: float,
         d: int = None,
         seed: int = 42,
         max_epoch: int = 151,
