@@ -36,13 +36,15 @@ def read_adjacency(A_npz: str):
     return load_npz(A_npz)
 
 
-def read_parameters(params_yaml: str, clf_name: str) -> dict:
+def read_parameters(params_yaml: str, algo_type: str, algo_name: str) -> dict:
 
-    try:
-        f = open(params_yaml)
-        return yaml.load(f, Loader=yaml.Loader)[clf_name]
-    except FileNotFoundError:
-        return {}
+    f = open(params_yaml)
+
+    for x in yaml.load(f, Loader=yaml.Loader)[algo_type]:
+        if x["name"] == algo_name:
+            return x["parameters"]
+
+    return {}
 
 
 # Output functions

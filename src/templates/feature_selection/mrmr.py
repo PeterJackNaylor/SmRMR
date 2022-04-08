@@ -30,7 +30,7 @@ discretization = "-t 0" if "${MODE}" == "regression" else ""
 # Run mRMR
 ############################
 samples, features = X.shape
-param_grid = u.read_parameters("${PARAMS_FILE}")
+param_grid = u.read_parameters("${PARAMS_FILE}", "feature_selection", "mrmr")
 
 out = subprocess.check_output(
     [

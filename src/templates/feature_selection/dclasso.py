@@ -16,38 +16,22 @@ Output files:
   - selected.tsv: like selected.npz, but in tsv format.
 """
 
+from base.sklearn import SklearnModel
 from dclasso import DCLasso
 
-import utils as u
 
-ms_kernels = ["HSIC", "cMMD"]
+class DCLassoModel(SklearnModel):
+    def __init__(self) -> None:
+        dl = DCLasso()
+        super().__init__(dl, "feature_selection", "dc_lasso")
 
-# Read data
-############################
-X, y, featnames = u.read_data("${TRAIN_NPZ}")
-param_grid = u.read_parameters("${PARAMS_FILE}", "dclasso")
-print(param_grid)
+    def score_features(self):
+        return self.wjs_
 
-measure_stats = param_grid['measure_stat']
-alphas = param_grid['alpha']
-optimizers = param_grid['optimizer']
-kernels = param_grid['kernel']
-penalties = param_grid['penalty']
-n1 = param_grid['n1'][0]
-# Run algorithm
-############################
+    def select_features(self):
+        return self.alpha_indices_
 
-for ms in measure_stats:
-  for alpha in alphas:
-    for opt in optimizers:
-      for penalty in penalties:
-        kernel_loop = kernels if ms in ms_kernels else [kernels[0]]
-        for kernel in kernel_loop:
-          dl = DCLasso(
-            alpha = alpha,
-            measure_stat = ms,
-            kernel = kernel,
-            penalty = penalty,
-            optimizer = opt
-          )
-          dl.fit(X, y, n1, d=None)
+
+if __name__ == "__main__":
+    model = DCLassoModel()
+    model.train("${TRAIN_NPZ}", "", "${PARAMS_FILE}")

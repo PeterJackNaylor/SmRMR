@@ -6,6 +6,7 @@ channels:
 dependencies:
   # project-specific packages
   - optax
+  - pytorch
   # required
   - codecov
   - dvc

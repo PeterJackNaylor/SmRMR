@@ -23,7 +23,7 @@ u.set_random_state()
 # Read data
 ############################
 X, y, featnames = u.read_data("${TRAIN_NPZ}")
-param_grid = u.read_parameters("${PARAMS_FILE}")
+param_grid = u.read_parameters("${PARAMS_FILE}", "feature_selection", "hsic_lasso")
 
 # Run algorithm
 ############################
