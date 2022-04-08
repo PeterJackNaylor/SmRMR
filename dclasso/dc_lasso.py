@@ -45,8 +45,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         penalty: str = "None",
         optimizer: str = "SGD",
         normalise_input: bool = True,
-        ms_kwargs: int = None,
-        opt_kwargs: int = None,
+        ms_kwargs: dict = {},
+        opt_kwargs: dict = {},
     ) -> None:
         super().__init__()
         self.alpha = alpha
@@ -57,10 +57,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.normalise_input = normalise_input
         self.penalty = penalty
         self.optimizer = optimizer
-        self.learning_rate = 0.001
-        self.lambda_ = 0.15 * 0.2
-        self.ms_kwargs = ms_kwargs if ms_kwargs else {}
-        self.opt_kwargs = opt_kwargs if opt_kwargs else {}
+        self.ms_kwargs = ms_kwargs
+        self.opt_kwargs = opt_kwargs
 
     def _compute_assoc(self, x, y=None, **kwargs):
 
@@ -78,7 +76,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self,
         X: npt.ArrayLike,
         y: npt.ArrayLike,
-        n1: float,
+        n1: float = 1,
         d: int = None,
         seed: int = 42,
         max_epoch: int = 151,
@@ -86,6 +84,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         mode: str = "competitive",
         init="from_convex_solve",
     ):
+
         self.precomputed_elements = False
         key = random.PRNGKey(seed)
 
@@ -205,7 +204,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         return f
 
     def penalty_func(self, beta):
-        return self.lambda_ * penalty_dic[self.penalty](beta)
+        return 0.15 * 0.2 * penalty_dic[self.penalty](beta)
 
     def _more_tags(self):
         return {"stateless": True}
@@ -213,7 +212,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
     def get_optimizer(self):
         opt = self.optimizer
         scheduler = optax.exponential_decay(
-            init_value=self.learning_rate, transition_steps=200, decay_rate=0.99
+            init_value=0.001, transition_steps=200, decay_rate=0.99
         )
 
         match opt:
