@@ -57,8 +57,8 @@ mapping_data_name = {
 }
 
 
-def color_dictionnary_fdr(name, kernel, only_kernel=True):
-    if only_kernel:
+def color_dictionnary_fdr(name, kernel):
+    if kernel != "unspecified":
         return kernel_colours[name][kernel]
     else:
         return color_dictionnary[name]
@@ -79,10 +79,9 @@ def name_mapping(name, kernel):
         return name
 
 
-def name_mapping_fdr(name, kernel, normed):
+def name_mapping_fdr(name, kernel):
     if name in ["HSIC", "cMMD"]:
-        s = "n" if normed else ""
-        return name + s + f" ({kernel})"
+        return name + f" ({kernel})"
     elif name == "pearson_correlation":
         return "Pearson"
     else:
@@ -90,10 +89,8 @@ def name_mapping_fdr(name, kernel, normed):
 
 
 def helper(name, kernel):
-    if "_norm" in name:
-        return name_mapping_fdr(name.split("_")[0], kernel, True)
-    else:
-        return name_mapping_fdr(name, kernel, False)
+    # return name_mapping_fdr(name.split("_")[0], kernel)
+    return name_mapping_fdr(name, kernel)
 
 
 color_dictionnary_fdr_keys = [

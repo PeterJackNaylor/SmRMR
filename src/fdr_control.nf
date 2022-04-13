@@ -34,7 +34,7 @@ process plot {
         path FILE
 
     output:
-        tuple path(FILE), path("*.png")
+        tuple path(FILE), path("*.png"), path("*.html")
 
     script:
         template "fdr_control/plot.py"
