@@ -12,6 +12,7 @@ setup: $(CONDA_ENV)
 	$(CONDA_ACTIVATE) && R -e "IRkernel::installspec()"
 	pre-commit install
 	pip install --upgrade --force-reinstall "jax[cpu]"
+	pip install -U kaleido
 
 docker_build: Dockerfile
 	docker build -t dclasso .
