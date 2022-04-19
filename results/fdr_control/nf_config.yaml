@@ -3,7 +3,7 @@ repeat: 10
 num_samples: [500]
 num_features: [100]
 measure_stat:
-# - "DC"
+- "PC"
 - "HSIC"
 kernel: ["linear"]
 penalty: ["l1"] # "none", "scad", "mcp"]

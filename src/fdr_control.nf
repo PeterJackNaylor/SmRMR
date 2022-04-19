@@ -11,11 +11,10 @@ FIRST_KERNEL = params.kernel[0]
 include { simulate_data } from './benchmark.nf'
 
 process fdr_control {
-    if( AM == 'PC' ){
-        conda '/data/ghighdim/pnaylor/project/dclasso/env_GPU/'
-        clusterOptions '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.0-cudnn8.0'
-        queue 'gpu-container_g1_dev'
-    }
+    conda { AM == 'PC' ? '/data/ghighdim/pnaylor/project/dclasso/env_GPU/' : '/data/ghighdim/pnaylor/project/dclasso/env/'}
+    clusterOptions { AM == 'PC' ? '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.0-cudnn8.0': '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH'}
+    queue { AM == 'PC' ? 'gpu-container_g1_dev': 'c1normal'}
+
 
     tag "${PARAMS},${AM},${KERNEL})"
     input:
