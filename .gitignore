@@ -1,9 +1,12 @@
 ./data/
 work/
 env/
+env_GPU/
 .nextflow/
 .nextflow*
 ./results
+*.png
+*.html
 ### Data files
 *.tsv
 *.csv
