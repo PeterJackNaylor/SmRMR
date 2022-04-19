@@ -24,7 +24,7 @@ from optax._src.base import GradientTransformation
 
 available_am = ["PC", "DC", "TR", "HSIC", "cMMD", "pearson_correlation"]
 kernel_am = ["HSIC", "cMMD"]
-available_kernels = ["distance", "gaussian", "linear"]
+available_kernels = ["distance", "gaussian", "linear", "sigmoid"]
 
 
 class DCLasso(BaseEstimator, TransformerMixin):
