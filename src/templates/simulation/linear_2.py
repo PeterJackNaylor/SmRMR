@@ -13,7 +13,7 @@ class Linear2(Simulator):
 
     def formula(self, X):
 
-        self.causal = np.array(range(0, 101, 10))
+        self.causal = np.array(range(0, 91, 10))
         X = X[:, self.causal]
 
         y = X.sum(axis=1)
