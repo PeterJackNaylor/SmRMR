@@ -27,20 +27,24 @@ def get_kernel_function(name, nfeats=1):
     A tuple, where the first element is the kernel function
     and the second it's hyper parameter dictionnary.
     """
-    if name == "gaussian":
-        kernel = kernel_gaussian
-        if nfeats is not None:
-            kernel_params = {"sigma": np.sqrt(nfeats)}
-        else:
-            kernel_params = {"sigma": None}
-    elif name == "linear":
-        kernel = kernel_linear
-        kernel_params = {}
-    elif name == "distance":
-        kernel = kernel_alpha
-        kernel_params = {"alpha": 1.0}
-    else:
-        raise "No valid kernel."
+    match name:
+        case "gaussian":
+            kernel = kernel_gaussian
+            if nfeats is not None:
+                kernel_params = {"sigma": np.sqrt(nfeats)}
+            else:
+                kernel_params = {"sigma": None}
+        case "linear":
+            kernel = kernel_linear
+            kernel_params = {}
+        case "distance":
+            kernel = kernel_alpha
+            kernel_params = {"alpha": 1.0}
+        case "sigmoid":
+            kernel = kernel_sigmoid
+            kernel_params = {}
+        case _:
+            raise ValueError("No valid kernel.")
 
     return kernel, kernel_params
 
