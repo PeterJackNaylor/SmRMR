@@ -12,7 +12,7 @@ def spearman_JAX(X, Y):
 
 
 class pearson_correlation_object(AM):
-    def method(self, X, Y):
+    def method(self, X, Y, **args):
         rho = np.absolute(spearman_JAX(X, Y))
         return rho
 
