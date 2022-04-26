@@ -54,8 +54,8 @@ causal_feats = list(causal_feats["featnames"][causal_feats["selected"]])
 ############################
 am = "${AM}"
 kernel = "${KERNEL}" if am in am_kernels else ""
-penalty = "${PENALTY}"
 optimizer = "${OPTIMIZER}"
+penalty_kwargs = {"name": "${PENALTY}", "lamb": float("${LAMBDA}")}
 
 # File parameters
 alpha_list = np.arange(0.1, 1, 0.1)
@@ -66,11 +66,16 @@ selected_variables = []
 # Process
 
 dl = DCLasso(
-    alpha=0.1, measure_stat=am, kernel=kernel, penalty=penalty, optimizer=optimizer
+    alpha=0.1,
+    measure_stat=am,
+    kernel=kernel,
+    penalty_kwargs=penalty_kwargs,
+    optimizer=optimizer,
 )
 
 dl.fit(X, y, n1=0.5, max_epoch=300)
 selected = list(np.array(dl.alpha_indices_))
+loss_value = float(dl.final_loss_)
 fdr_ = fdr(causal_feats, selected)
 fdr_alpha.append(fdr_)
 selected_variables.append(selected)
@@ -92,10 +97,12 @@ u.save_analysis_tsv(
     p=p,
     AM=am,
     kernel=kernel,
-    penalty=penalty,
+    penalty=penalty_kwargs["name"],
     optimizer=optimizer,
     metric="fdr",
+    lamb=penalty_kwargs["lamb"],
     alpha=alpha_list,
     value=fdr_alpha,
     selected=selected_variables,
+    loss=loss_value,
 )

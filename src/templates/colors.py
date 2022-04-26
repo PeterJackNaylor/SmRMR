@@ -29,8 +29,9 @@ kernel_colours = {
         "distance": "rgb(252,187,161)",
     },
     "HSIC": {
-        "linear": "rgb(8,81,156)",
-        "gaussian": "rgb(107,174,214)",
+        "linear": "rgb(8,48,107)",
+        "gaussian": "rgb(33,113,181)",
+        "sigmoid": "rgb(107,174,214)",
         "distance": "rgb(198,219,239)",
     },
     "HSIC_norm": {
@@ -43,6 +44,16 @@ kernel_colours = {
 mapping_data_name = {
     "categorical_1": "Cat.1",
     "categorical_2": "Cat.2",
+    "categorical_3": "Cat.3",
+    "linear_0": "Lin.0",
+    "linear_1": "Lin.1",
+    "linear_2": "Lin.2",
+    "linear_3": "Lin.3",
+    "nonlinear_1": "NLin.1",
+    "nonlinear_2": "NLin.2",
+    "nonlinear_3": "NLin.3",
+    "nonlinear_4": "NLin.4",
+    "nonlinear_5": "NLin.5",
     "model_1a": "1.a",
     "model_1b": "1.b",
     "model_1c": "1.c",
@@ -67,8 +78,9 @@ def color_dictionnary_fdr(name, kernel):
 inside_colors = {
     "unspecified": "rgb(37,37,37)",
     "linear": "rgb(37,37,37)",
-    "gaussian": "rgb(150,150,150)",
-    "distance": "rgb(217,217,217)",
+    "gaussian": "rgb(115,115,115)",
+    "sigmoid": "rgb(189,189,189)",
+    "distance": "rgb(240,240,240)",
 }
 
 

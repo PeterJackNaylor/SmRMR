@@ -1,15 +1,16 @@
 import jax.numpy as np
+from functools import partial
 
 
-def none(theta):
+def none(theta, **kwargs):
     return 0
 
 
-def lasso(theta, lamb=0.5):
+def lasso(theta, lamb=0.5, **kwargs):
     return (lamb * np.absolute(theta)).sum()
 
 
-def scad(theta, lamb=0.5, a=3.7):
+def scad(theta, lamb=0.5, a=3.7, **kwargs):
     assert lamb < a * lamb
     abs_theta = np.absolute(theta)
     pen = np.where(
@@ -24,7 +25,7 @@ def scad(theta, lamb=0.5, a=3.7):
     return pen.sum()
 
 
-def mcp(theta, lamb=0.5, b=3):
+def mcp(theta, lamb=0.5, b=3, **kwargs):
     abs_theta = np.absolute(theta)
     pen = lamb * np.where(
         abs_theta < lamb * b, abs_theta - abs_theta**2 / (2 * b * lamb), 0.5 * b
@@ -32,7 +33,22 @@ def mcp(theta, lamb=0.5, b=3):
     return pen.sum()
 
 
-penalty_dic = {"none": none, "l1": lasso, "scad": scad, "mcp": mcp}
+def pic_penalty(kwargs):
+    name = kwargs["name"]
+    match name:
+        case "none":
+            f = none
+        case "l1":
+            f = lasso
+        case "scad":
+            f = scad
+        case "mcp":
+            f = mcp
+        case _:
+            error_msg = f"Unkown penalty: given {name}"
+            raise ValueError(error_msg)
+    f = partial(f, **kwargs)
+    return f
 
 
 def scad_test():

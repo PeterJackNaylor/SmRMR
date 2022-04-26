@@ -1,0 +1,16 @@
+out: results/lambda_control
+repeat: 20
+num_samples: [100, 500, 1000]
+num_features: [100, 500, 5000]
+measure_stat:
+- "HSIC"
+- "PC"
+kernel: ["gaussian"]
+penalty: ["l1", "none", "scad", "mcp"]
+optimizer: ["SGD", "adam"]
+lambda: [0.1, 0.5, 1.0, 3.0, 5.0, 10., 30., 50., 100.]
+simulation_models:
+- 'categorical_1'
+- 'linear_0'
+- 'linear_1'
+- 'nonlinear_1'

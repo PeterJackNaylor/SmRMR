@@ -23,6 +23,7 @@ process fdr_control {
         each KERNEL
         each PENALTY
         each OPTIMIZER
+        each LAMBDA
     output:
         path "performance.tsv"
 
@@ -49,6 +50,6 @@ process plot {
 workflow {
     main:
         simulate_data(params.simulation_models, params.num_samples, params.num_features, repeats)
-        fdr_control(simulate_data.out, params.measure_stat, params.kernel, params.penalty, params.optimizer)
+        fdr_control(simulate_data.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, 0.5)
         plot(fdr_control.out.collectFile(skip: 1, keepHeader: true))
 }

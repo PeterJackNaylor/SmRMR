@@ -13,7 +13,7 @@ from . import association_measures as am
 from .association_measures.hsic import precompute_kernels
 from .association_measures.distance_correlation import pdist_p
 from .association_measures.kernel_tools import check_vector
-from .penalties import penalty_dic
+from .penalties import pic_penalty
 from .utils import (
     knock_off_check_parameters,
     get_equi_features,
@@ -42,9 +42,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
         alpha: float = 1.0,
         measure_stat: str = "PC",
         kernel: str = "linear",
-        penalty: str = "None",
         optimizer: str = "SGD",
         normalise_input: bool = True,
+        penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
         ms_kwargs: dict = {},
         opt_kwargs: dict = {},
     ) -> None:
@@ -56,7 +56,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.measure_stat = measure_stat
         self.kernel = kernel
         self.normalise_input = normalise_input
-        self.penalty = penalty
+        self.penalty_func = self.gene_penalty(penalty_kwargs)
         self.optimizer = optimizer
         self.ms_kwargs = ms_kwargs
         self.opt_kwargs = opt_kwargs
@@ -161,8 +161,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.alpha_indices_ = alpha_thres[0]
         self.t_alpha_ = alpha_thres[1]
         self.n_features_out_ = alpha_thres[2]
+        self.final_loss_ = value
 
-        print("what do we keep...?")
         return self
 
     def fit_transform(self, X, y, **fit_params):
@@ -204,8 +204,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 raise ValueError(error_msg)
         return f
 
-    def penalty_func(self, beta):
-        return 0.15 * 0.2 * penalty_dic[self.penalty](beta)
+    def gene_penalty(self, kwargs):
+        penalty_func = pic_penalty(kwargs)
+        return penalty_func
 
     def _more_tags(self):
         return {"stateless": True}

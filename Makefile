@@ -23,6 +23,9 @@ screening:
 fdr_control:
 	$(CONDA_ACTIVATE); nextflow src/fdr_control.nf -profile dclasso -params-file results/fdr_control/nf_config.yaml -resume
 
+lambda_control:
+	$(CONDA_ACTIVATE); nextflow src/fdr_control.nf -params-file results/lambda_control/nf_config.yaml -resume
+
 benchmark: results/benchmark/config.yaml
 	$(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/config.yaml -resume
 
