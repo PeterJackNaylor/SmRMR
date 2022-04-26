@@ -12,8 +12,8 @@ include { simulate_data } from './benchmark.nf'
 
 process fdr_control {
     conda { AM == 'PC' ? '/data/ghighdim/pnaylor/project/dclasso/env_GPU/' : '/data/ghighdim/pnaylor/project/dclasso/env/'}
-    clusterOptions { AM == 'PC' ? '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.0-cudnn8.0': '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH'}
-    queue { AM == 'PC' ? 'gpu-container_g1_dev': 'c1normal'}
+    clusterOptions { AM == 'PC' ? '-jc gpu-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0': '-jc pcc-large -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH'}
+    //queue { AM == 'PC' ? 'gpu-container_g1': 'c1large'}
 
 
     tag "${PARAMS},${AM},${KERNEL})"
