@@ -1,10 +1,10 @@
-./data/
+data
 work/
 env/
 env_GPU/
 .nextflow/
 .nextflow*
-./results
+results
 *.png
 *.html
 ### Data files
