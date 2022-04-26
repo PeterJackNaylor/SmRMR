@@ -1,7 +1,7 @@
 out: results/lambda_control
-repeat: 2
-num_samples: [100]#, 500, 1000]
-num_features: [100]#, 500, 5000]
+repeat: 20
+num_samples: [100, 500, 1000]
+num_features: [100, 500, 5000]
 measure_stat:
 - "HSIC"
 - "PC"
