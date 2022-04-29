@@ -21,13 +21,13 @@ process plot {
         tuple path(FILE), path("*.png"), path("*.html")
 
     script:
-        template "fdr_control/plot.py"
+        template "lambda_control/plot.py"
 }
 
 
 workflow {
     main:
         simulate_data(params.simulation_models, params.num_samples, params.num_features, repeats)
-        fdr_control(simulate_data.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, 0.5)
+        fdr_control(simulate_data.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, params.lambda)
         plot(fdr_control.out.collectFile(skip: 1, keepHeader: true))
 }
