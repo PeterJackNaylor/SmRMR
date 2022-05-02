@@ -10,6 +10,7 @@ measure_stat:
 kernel: ["linear", "gaussian", "sigmoid"]
 penalty: ["l1", "none", "scad", "mcp"]
 optimizer: ["SGD", "adam"]
+lambda: [0.1]
 simulation_models:
 - 'categorical_1'
 - 'categorical_2'

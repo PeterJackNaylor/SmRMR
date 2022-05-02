@@ -7,6 +7,7 @@ repeats = 0..(params.repeat-1)
 
 KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
+FIRST_LAMBDA = params.lambda[0]
 
 include { simulate_data } from './benchmark.nf'
 
@@ -24,7 +25,7 @@ process fdr_control {
         path "performance.tsv"
 
     when:
-        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL))
+        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL)) && ((LAMBDA == FIRST_LAMBDA) || (PENALTY != "none"))
 
     script:
         template "fdr_control/main.py"
