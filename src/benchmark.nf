@@ -6,7 +6,7 @@ params.out = '.'
 params.splits = 5
 params.mode = "regression"
 
-config = file("${params.out}/config.yaml")
+config = file(params.config_path)
 mode = params.mode
 
 // simulation_models = ['linear_0']
@@ -14,60 +14,41 @@ mode = params.mode
 //model_algorithms = ['random_forest'] // 'logistic_regression', 'random_forest', 'svc', 'knn'
 // performance_metrics = ['tpr_fpr', 'features_tpr_fpr'] //'auc_roc',
 
+include { simulate_data; simulate_data as validation_data} from './utils.nf'
+FORCE = 1
+include { simulate_data as test_data } from './utils.nf'
 
-
-process simulate_data {
-
-    tag "${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES})"
-    afterScript 'mv scores.npz causal.npz'
-
+process dclasso {
+    tag "model=DCLasso;${TAG});${PENALTY};${AM};${KERNEL}"
     input:
-        each SIMULATION
-        each NUM_SAMPLES
-        each NUM_FEATURES
-        each REPEATS
+        tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
+        path PARAMS_FILE
+        each PENALTY
+        each AM
+        each KERNEL
+
     output:
-        tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation.npz"), path('causal.npz')
+        tuple val("model=DCLasso;${TAG};${PENALTY};${AM};${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     when:
-        (NUM_SAMPLES < NUM_FEATURES + 1) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))
+        (AM == "HSIC") || (KERNEL == "linear")
 
     script:
-        template "simulation/${SIMULATION}.py"
-
+        template "feature_selection_and_classification/DCLasso_simulations.py"
 }
 
-process split_data {
-
-    tag "${PARAMS},${I})"
-
-    input:
-        tuple val(PARAMS), path(DATA_NPZ), path(CAUSAL_NPZ)
-        each I
-        val SPLITS
-
-    output:
-        tuple val("${PARAMS},${I})"), path("Xy_train.npz"), path("Xy_test.npz"), path(CAUSAL_NPZ)
-
-    script:
-        template 'data/kfold.py'
-
-}
-
-process make_grid {
-
-    tag "${PARAMS},${I})"
-
+process feature_selection_and_classification {
+    tag "model=${MODEL};${TAG})"
     input:
         each MODEL
+        tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
         path PARAMS_FILE
 
     output:
-        tuple val("${PARAMS},${I})"), path("grid.npz")
+        tuple val("model=${MODEL};${TAG}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     script:
-        template 'data/grid.py'
-
+        template "feature_selection_and_classification/${MODEL.name}.py"
 }
 
 process feature_selection {
@@ -77,11 +58,11 @@ process feature_selection {
 
     input:
         each MODEL
-        tuple val(PARAMS), path(TRAIN_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ)
+        tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
         path PARAMS_FILE
 
     output:
-        tuple val("feature_selection=${MODEL.name}(${MODEL.parameters});${PARAMS}"), path(TRAIN_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path('scores_feature_selection.npz')
+        tuple val("feature_selection=${MODEL.name}(${MODEL.parameters});${PARAMS}"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_feature_selection_${MODEL.name}.npz")
 
     script:
         template "feature_selection/${MODEL.name}.py"
@@ -95,14 +76,14 @@ process prediction {
 
     input:
         each MODEL
-        tuple val(PARAMS), path(TRAIN_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ)
+        tuple val(PARAMS), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ)
         path PARAMS_FILE
 
     output:
         tuple val("model=${MODEL};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ), path('y_proba.npz'), path('y_pred.npz')
 
     script:
-        template "${mode}/${MODEL}.py"
+        template "${mode}/${MODEL.name}.py"
 
 }
 
@@ -122,20 +103,44 @@ process performance {
 
 }
 
+workflow simulation {
+    main:
+        simulate_data(params.simulation_models, params.num_samples, params.num_features, 1..params.repeat, 0, "")
+        validation_data(params.simulation_models, params.validation_samples, params.num_features, 1, 0, "_val")
+        test_data(params.simulation_models, params.test_samples, params.num_features, 1, 1, "_test")
+
+        simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
+                    .set{ train_split }
+        validation_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
+                    .set{ validation_split }
+        test_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
+                    .set{ test_split }
+        train_split .combine(validation_split, by: 0) .combine(test_split, by: 0) .set{ data }
+    emit:
+        data
+}
 
 workflow models {
     take: data
     main:
-        split_data(data, 0..(params.splits - 1), params.splits)
-        feature_selection(params.feature_selection, split_data.out, config)
+        feature_selection(params.feature_selection, data, config)
         prediction(params.prediction, feature_selection.out, config)
-        performance(params.performance_metrics, prediction.out)
+
+        dclasso(data, config, params.penalty, params.measure_stat, params.kernel)
+
+        feature_selection_and_classification(params.feature_selection_and_classification, data, config)
+
+        dclasso.out .concat(feature_selection_and_classification.out) .concat(prediction.out) .set{ perf }
+
+
+        performance(params.performance_metrics, perf)
+
     emit:
-        performance.out.collectFile(name: "${params.out}/performance.tsv", skip: 1, keepHeader: true)
+        performance.out.collectFile(name: "${params.out}/performance_${mode}.tsv", skip: 1, keepHeader: true)
 }
 
 workflow {
     main:
-        simulate_data(params.simulation_models, params.num_samples, params.num_features)
-        models(simulate_data.out)
+        simulation()
+        models(simulation.out)
 }

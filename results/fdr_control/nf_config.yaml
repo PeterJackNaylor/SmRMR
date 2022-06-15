@@ -1,5 +1,5 @@
 out: results/fdr_control
-repeat: 10
+repeat: 20
 num_samples: [100, 500, 1000]
 num_features: [100, 500, 5000]
 measure_stat:
@@ -14,13 +14,13 @@ lambda: [0.1]
 simulation_models:
 - 'categorical_1'
 - 'categorical_2'
-- 'categorical_3'
+# - 'categorical_3'
 - 'linear_0'
 - 'linear_1'
-- 'linear_2'
-- 'linear_3'
+# - 'linear_2'
+# - 'linear_3'
 - 'nonlinear_1'
 - 'nonlinear_2'
-- 'nonlinear_3'
-- 'nonlinear_4'
-- 'nonlinear_5'
+# - 'nonlinear_3'
+# - 'nonlinear_4'
+# - 'nonlinear_5'

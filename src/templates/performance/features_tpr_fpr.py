@@ -21,10 +21,13 @@ if len(causal):
     tn, fp, fn, tp = confusion_matrix(causal, selected, labels=[0, 1]).ravel()
     tpr = tp / (tp + fn)
     fpr = fp / (fp + tn)
+    fdr = fp / (tp + fp)
 
 else:
     tpr = fpr = "NA"
 
 u.save_analysis_tsv(
-    run="${PARAMS}", metric=["tpr_causal", "fpr_causal"], value=[tpr, fpr]
+    run="${PARAMS}",
+    metric=["tpr_causal", "fpr_causal", "fdr_causal"],
+    value=[tpr, fpr, fdr],
 )

@@ -13,7 +13,7 @@ from sklearn.metrics import roc_auc_score
 
 import utils as u
 
-_, y, _ = u.read_data("${TEST_NPZ}")
+_, y, _, _ = u.read_data("${TEST_NPZ}")
 y_proba = np.load("${PROBA_NPZ}")["proba"]
 
 try:

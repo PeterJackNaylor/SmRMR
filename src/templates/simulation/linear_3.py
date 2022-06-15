@@ -7,9 +7,9 @@ from base.simulator import Simulator
 
 class Linear3(Simulator):
     def __init__(
-        self, num_samples, num_features, correlated=False, binarize=False
+        self, num_samples, num_features, correlated=False, binarize=False, name=""
     ) -> None:
-        super().__init__(num_samples, num_features, correlated, binarize)
+        super().__init__(num_samples, num_features, correlated, binarize, name)
 
     def formula(self, X):
 
@@ -25,4 +25,4 @@ class Linear3(Simulator):
 
 
 if __name__ == "__main__":
-    Linear3(int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True)
+    Linear3(int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, name="${NAME}")

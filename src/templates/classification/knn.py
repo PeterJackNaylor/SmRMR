@@ -21,7 +21,7 @@ from base.sklearn import SklearnModel
 class kNNModel(SklearnModel):
     def __init__(self) -> None:
         knn = KNeighborsClassifier(weights="distance")
-        super().__init__(knn, "knn")
+        super().__init__(knn, "classification", "prediction", "knn")
 
     def score_features(self):
         return [1 for _ in range(self.clf.n_features_in_)]
@@ -32,6 +32,8 @@ class kNNModel(SklearnModel):
 
 if __name__ == "__main__":
     model = kNNModel()
-    model.train("${TRAIN_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}")
+    model.train_validate(
+        "${TRAIN_NPZ}", "${VAL_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}"
+    )
     model.predict_proba("${TEST_NPZ}", "${SCORES_NPZ}")
     model.predict("${TEST_NPZ}", "${SCORES_NPZ}")

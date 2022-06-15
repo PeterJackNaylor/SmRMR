@@ -93,12 +93,21 @@ def kendalltau(x, y, variant="c"):
 
 
 class TR(AM):
-    def method(self, X, Y):
+    def method(self, X, Y, **args):
         # tau = X.sum()  # kendalltau(X, Y).correlation
+        tau = 0  # tau_tfp(X, Y)
         rho = spearman_JAX(X, Y)
         # tau = kendalltau(X, Y).correlation
         # rho = spearmanr(X, Y).correlation
-        return rho
+        return 3 * tau - 2 * rho
+
+
+# def tau_tfp(x, y):
+#     # import tensorflow_probability as tfp
+#     # res = tfp.stats.kendalls_tau(x, y)
+#     res = tfa.metrics.KendallsTau()
+#     res.update_state(x, y)
+#     return res.result().numpy()
 
 
 def unit_test():
@@ -116,15 +125,21 @@ def unit_test():
     step3 = time.time()
     print("my rho: ", spearman_JAX(x, y))
     step4 = time.time()
-    print("my tau: ", kendalltau(x, y))
+    # print("my tau: ", second_tau(x, y))
     step5 = time.time()
+    # print("tfp tau: ", tau_tfp(x, y))
+    step6 = time.time()
     print("time for scipy rho: ", step1 - start)
     print("time for scipy tau: ", step2 - step1)
     print("time for my rho: ", step4 - step3)
     print("time for my tau: ", step5 - step4)
+    print("time for tfp tau: ", step6 - step5)
 
 
 # unit_test()
+# import pdb; pdb.set_trace()
+
+tr = TR()
 
 if __name__ == "__main__":
     unit_test()

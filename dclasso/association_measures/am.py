@@ -12,14 +12,16 @@ class AM:
     def __init__(self, batch_size=1000):
         self.batch_size = batch_size
 
-    def __call__(self, X, Y=None, max_batch=None, **args):
+    def __call__(self, X, Y=None, max_batch=None, verbose=True, **args):
         batch_size = max_batch if max_batch else self.batch_size
         n, d = X.shape
         y_1d = True if Y is not None else False
         if y_1d:
+            if Y.ndim == 1:
+                Y = Y.reshape(-1, 1)
             ny, nd = Y.shape
             assert n == ny
-            assert nd == 1
+
         else:
             Y = X
             nd = d
@@ -61,7 +63,9 @@ class AM:
 
         batch_mode = determine_batch_mode(batch_size, n_indices)
 
-        result = compute(func_with_indices, indices, batch_mode, batch_size, n_indices)
+        result = compute(
+            func_with_indices, indices, batch_mode, batch_size, n_indices, verbose
+        )
 
         # lax map seems to be so slow...
         # result = jax.lax.map(func_with_indices, indices)
@@ -91,7 +95,7 @@ def determine_batch_mode(batch_size, n):
     return batch_mode
 
 
-def compute(func, ind, batch_mode, bs, n_ind):
+def compute(func, ind, batch_mode, bs, n_ind, verbose=True):
 
     if not batch_mode:
         result = vmap(func)(ind)
@@ -101,5 +105,6 @@ def compute(func, ind, batch_mode, bs, n_ind):
         def helper(i):
             return vmap(func)((ix[i : (i + bs)], iy[i : (i + bs)]))
 
-        result = np.concatenate([helper(i) for i in trange(0, n_ind, bs)])
+        range_idx = trange(0, n_ind, bs) if verbose else range(0, n_ind, bs)
+        result = np.concatenate([helper(i) for i in range_idx])
     return result

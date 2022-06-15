@@ -23,12 +23,14 @@ def read_data(data_npz: str, selected_npz: str = ""):
         featnames = np.arange(X.shape[1])
 
     if selected_npz != "":
+        featnames = np.load(selected_npz)["featnames"]
         selected = np.load(selected_npz)["selected"]
 
         if not sum(selected):
             custom_error()
-
-    return X, y, featnames
+    else:
+        selected = np.zeros(X.shape[0], dtype=bool)
+    return X, y, featnames, selected
 
 
 def read_adjacency(A_npz: str):
@@ -54,9 +56,10 @@ def save_scores_npz(
     selected: npt.ArrayLike,
     scores: npt.ArrayLike = None,
     hyperparams: dict = None,
+    name: str = "scores.npz",
 ):
     np.savez(
-        "scores.npz",
+        name,
         featnames=featnames,
         scores=sanitize_vector(scores),
         selected=sanitize_vector(selected),
@@ -70,7 +73,7 @@ def save_scores_tsv(
     scores: npt.ArrayLike = None,
     hyperparams: dict = {},
 ):
-    features_dict = {"feature": featnames, "selected": sanitize_vector(selected)}
+    features_dict = {"feature": featnames, "weights": sanitize_vector(scores)}
     if scores is not None:
         features_dict["score"] = sanitize_vector(scores)
 
@@ -91,7 +94,6 @@ def save_proba_npz(proba: npt.ArrayLike = None, hyperparams: dict = None):
 def save_analysis_tsv(**kwargs):
 
     metrics_dict = locals()["kwargs"]
-
     with open("performance.tsv", "w", newline="") as FILE:
         pd.DataFrame(metrics_dict).to_csv(FILE, sep="\t", index=False)
 

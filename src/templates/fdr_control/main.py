@@ -11,9 +11,9 @@ Output files:
 """
 import numpy as np
 from sklearn.utils.validation import check_X_y
+from scipy.sparse.linalg import eigsh
 
-from dclasso import DCLasso
-from dclasso.association_measures.kernel_tools import check_vector
+from dclasso import DCLasso, pic_penalty
 from dclasso.dc_lasso import alpha_threshold
 
 import utils as u
@@ -36,14 +36,13 @@ am_kernels = ["HSIC", "cMMD"]
 
 # Read data
 ############################
-X, y, featnames = u.read_data("${DATA_NPZ}")
+X, y, featnames, _ = u.read_data("${DATA_NPZ}")
 X, y = check_X_y(X, y)
 X = np.asarray(X)
 n, p = X.shape
 
 (ny,) = y.shape
 assert n == ny
-y = check_vector(y)
 
 p = X.shape[1]
 causal_feats = np.load("${CAUSAL_NPZ}")
@@ -65,15 +64,9 @@ selected_variables = []
 
 # Process
 
-dl = DCLasso(
-    alpha=0.1,
-    measure_stat=am,
-    kernel=kernel,
-    penalty_kwargs=penalty_kwargs,
-    optimizer=optimizer,
-)
+dl = DCLasso(alpha=0.1, measure_stat=am, kernel=kernel)
 
-dl.fit(X, y, n1=0.5, max_epoch=300)
+dl.fit(X, y, n1=0.5, max_epoch=300, penalty_kwargs=penalty_kwargs, optimizer=optimizer)
 selected = list(np.array(dl.alpha_indices_))
 loss_value = float(dl.final_loss_)
 fdr_ = fdr(causal_feats, selected)
@@ -82,12 +75,16 @@ selected_variables.append(selected)
 
 for alpha in alpha_list[1:]:
 
-    selected_features, _, _ = alpha_threshold(alpha, dl.wjs_, dl.screened_indices_)
+    selected_features, _, _ = alpha_threshold(alpha, dl.wjs_, dl.screen_indices_)
     selected_features = list(np.array(selected_features))
     fdr_alpha.append(fdr(causal_feats, selected_features))
     selected_variables.append(selected_features)
 
-
+# Some theoritical results
+lambda2 = float(eigsh(np.array(dl.Dxx), k=1, which="SA")[0].squeeze())
+Cst = 1.5
+R = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(dl.beta_))
+N1 = np.abs(dl.beta_).sum()
 # Save results
 ############################
 simu, _ = "${PARAMS}".split("(")
@@ -105,4 +102,7 @@ u.save_analysis_tsv(
     value=fdr_alpha,
     selected=selected_variables,
     loss=loss_value,
+    lambda_2=lambda2,
+    R=R,
+    norm_1=N1,
 )
