@@ -204,9 +204,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             self.kernel = kernel
             X2, y2, screen_indices, d = self.screen_split(X, y, n, p, n1, d, key)
             Xhat = get_equi_features(X2, key)
-            self.ms_kwargs["precompute"] = precompute_kernels_match(
-                ms, X, y, kernel, self.ms_kwargs
-            )
+            self.ms_kwargs = precompute_kernels_match(ms, X, y, kernel, self.ms_kwargs)
             Xs = np.concatenate([X2, Xhat], axis=1)
             Dxy = self._compute_assoc(Xs, y2, **self.ms_kwargs)
             Dxx = self._compute_assoc(Xs, **self.ms_kwargs)
@@ -376,7 +374,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         return X2, y2, screened_indices, d
 
     def compute_loss_fn(self, X, y, penalty_kwargs):
-        self.ms_kwargs["precompute"] = precompute_kernels_match(
+        self.ms_kwargs = precompute_kernels_match(
             self.measure_stat, X, y, self.kernel, self.ms_kwargs
         )
 
@@ -395,11 +393,10 @@ class DCLasso(BaseEstimator, TransformerMixin):
 def precompute_kernels_match(measure_stat, X, y, kernel, ms_kwargs):
     match measure_stat:
         case "HSIC" | "cMMD":
-            return compute_kernels_for_am(X, y, kernel, **ms_kwargs)
+            ms_kwargs["precompute"] = compute_kernels_for_am(X, y, kernel, **ms_kwargs)
         case "DC":
-            return compute_distance_for_am(X, y, **ms_kwargs)
-        case _:
-            return None
+            ms_kwargs["precompute"] = compute_distance_for_am(X, y, **ms_kwargs)
+    return ms_kwargs
 
 
 def alpha_threshold(alpha, wjs, indices, verbose=True):
