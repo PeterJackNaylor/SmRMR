@@ -1,0 +1,61 @@
+config_path: results/benchmark/regression_config_small.yaml
+out: results/benchmark
+repeat: 2
+num_samples: [100, 500]
+num_features: [100, 500]
+validation_samples: 100
+test_samples: 10000
+mode: regression
+simulation_models:
+  - 'linear_0'
+penalty: ["scad"] # , "None"
+measure_stat: ["DC"] #, "HSIC"]
+kernel: ["linear", "sigmoid"]
+dclasso:
+  - name: dclasso
+    parameters:
+      alpha: 0.5
+      n1: 0.3
+      epoch: 150
+      optimizer: ["adam"]
+      lambda: [0.1]
+      lr: [1.e-3]
+feature_selection:
+  - name: hsic_lasso
+    parameters:
+      penalty: ['l1']
+  - name: mrmr
+    parameters:
+      penalty: ['l1']
+prediction:
+  - name: logistic_regression
+    parameters:
+      penalty: [ 'l1', 'none' ]
+      C: [ 0.01, 0.1, 0.2, 0.5 ]
+  - name: gbdt
+    parameters:
+      num_leaves: [ 20, 40, 60, 80, 100 ]
+      alphas: [ 0.001, 0.01, 0.1 ]
+      lambdas: [ 0.001, 0.01, 0.1 ]
+  - name: random_forest
+    parameters:
+      n_estimators: [ 200, 500 ]
+      max_features: [ "auto", "log2" ]
+      max_depth: [ 4, 6, 8 ]
+      criterion: [ "gini", "entropy" ]
+  - name: knn
+    parameters:
+      n_neighbors: [ 3, 5, 7 ]
+  - name: svc
+    parameters:
+      C: [ 0.5, 1, 2 ]
+
+feature_selection_and_classification:
+  - name: stg
+    parameters:
+      learning_rates: [ 1.e-5 ]
+      sigmas: [ 0.1 ]
+      lambdas: [ 5.e-5 ]
+performance_metrics:
+  - mse
+  - features_tpr_fpr
