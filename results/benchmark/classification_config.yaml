@@ -9,7 +9,7 @@ mode: classification
 simulation_models:
   - 'categorical_1'
   - 'categorical_2'
-penalty: ["l1", "none", "scad", "mcp"]
+penalty: ["l1", "None", "scad", "mcp"]
 measure_stat: ["DC", "HSIC", "PC"]
 kernel: ["linear", "gaussian", "sigmoid"]
 dclasso:
