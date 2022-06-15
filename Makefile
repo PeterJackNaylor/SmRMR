@@ -27,7 +27,8 @@ lambda_control:
 	$(CONDA_ACTIVATE); nextflow src/lambda_control.nf -params-file results/lambda_control/nf_config.yaml -resume
 
 benchmark: results/benchmark/config.yaml
-	$(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/config.yaml -resume
+	$(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/classification_config.yaml -resume
+	# $(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/config_small.yaml -resume
 
 test:
 	$(CONDA_ACTIVATE); pytest test

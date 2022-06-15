@@ -9,7 +9,7 @@ KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
 FIRST_LAMBDA = params.lambda[0]
 
-include { simulate_data } from './benchmark.nf'
+include { simulate_data } from './utils.nf'
 
 process fdr_control {
 
@@ -46,7 +46,7 @@ process plot {
 
 workflow {
     main:
-        simulate_data(params.simulation_models, params.num_samples, params.num_features, repeats)
+        simulate_data(params.simulation_models, params.num_samples, params.num_features, repeats, 0, "")
         fdr_control(simulate_data.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, 0.5)
         plot(fdr_control.out.collectFile(skip: 1, keepHeader: true))
 }

@@ -36,7 +36,7 @@ def mcp(theta, lamb=0.5, b=3, **kwargs):
 def pic_penalty(kwargs):
     name = kwargs["name"]
     match name:
-        case "none":
+        case "None":
             f = none
         case "l1":
             f = lasso

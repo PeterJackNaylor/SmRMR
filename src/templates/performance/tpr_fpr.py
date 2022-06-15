@@ -13,16 +13,21 @@ from sklearn.metrics import confusion_matrix
 
 import utils as u
 
-_, y, _ = u.read_data("${TEST_NPZ}", "")
+_, y, _, _ = u.read_data("${TEST_NPZ}", "")
 y_pred = np.load("${PRED_NPZ}")["preds"]
 
 score = np.nan
 if len(y_pred):
-    tn, fp, fn, tp = confusion_matrix(y, y_pred, labels=[-1, 1]).ravel()
+    labels = list(np.unique(y_pred).astype(int))
+    tn, fp, fn, tp = confusion_matrix(y, y_pred, labels=labels).ravel()
+    acc = (tn + tp) / (tn + fp + fn + tp)
     tpr = tp / (tp + fn)
     fpr = fp / (fp + tn)
+    f1 = 2 * tp / (2 * tp + fp + fn)
 
 else:
     tpr = fpr = "NA"
 
-u.save_analysis_tsv(run="${PARAMS}", metric=["tpr", "fpr"], value=[tpr, fpr])
+u.save_analysis_tsv(
+    run="${PARAMS}", metric=["acc", "tpr", "fpr", "f1"], value=[acc, tpr, fpr, f1]
+)

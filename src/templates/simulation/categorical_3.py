@@ -7,16 +7,16 @@ from base.simulator import Simulator
 
 class Categorical3(Simulator):
     def __init__(
-        self, num_samples, num_features, correlated=False, binarize=False
+        self, num_samples, num_features, correlated=False, binarize=False, name=""
     ) -> None:
-        super().__init__(num_samples, num_features, correlated, binarize)
+        super().__init__(num_samples, num_features, correlated, binarize, name)
 
     def formula(self, X):
 
         self.causal = np.array(range(0, 91, 10))
         X = X[:, self.causal]
 
-        y = X.sum(axis=1) + 10 ** 0.5
+        y = X.sum(axis=1) + 10**0.5
 
         return y
 
@@ -46,4 +46,6 @@ class Categorical3(Simulator):
 
 
 if __name__ == "__main__":
-    Categorical3(int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, True)
+    Categorical3(
+        int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, True, name="${NAME}"
+    )

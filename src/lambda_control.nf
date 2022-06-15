@@ -7,7 +7,7 @@ repeats = 0..(params.repeat-1)
 KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
 
-include { simulate_data } from './benchmark.nf'
+include { simulate_data } from './utils.nf'
 include { fdr_control } from './fdr_control.nf'
 
 

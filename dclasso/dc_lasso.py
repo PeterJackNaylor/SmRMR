@@ -1,3 +1,5 @@
+from functools import partial
+from collections.abc import Callable
 import numpy.typing as npt
 from tqdm import trange
 import numpy as npy
@@ -12,7 +14,6 @@ from sklearn.utils.validation import check_X_y
 from . import association_measures as am
 from .association_measures.hsic import precompute_kernels
 from .association_measures.distance_correlation import pdist_p
-from .association_measures.kernel_tools import check_vector
 from .penalties import pic_penalty
 from .utils import (
     knock_off_check_parameters,
@@ -42,11 +43,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
         alpha: float = 1.0,
         measure_stat: str = "PC",
         kernel: str = "linear",
-        optimizer: str = "SGD",
-        normalise_input: bool = True,
-        penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
         ms_kwargs: dict = {},
-        opt_kwargs: dict = {},
+        normalise_input: bool = True,
+        verbose: bool = False,
     ) -> None:
         super().__init__()
         self.alpha = alpha
@@ -55,11 +54,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
             assert kernel in available_kernels, "kernel incorrect"
         self.measure_stat = measure_stat
         self.kernel = kernel
-        self.normalise_input = normalise_input
-        self.penalty_func = self.gene_penalty(penalty_kwargs)
-        self.optimizer = optimizer
         self.ms_kwargs = ms_kwargs
-        self.opt_kwargs = opt_kwargs
+        self.normalise_input = normalise_input  # default value
+        self.verbose = verbose
 
     def _compute_assoc(self, x, y=None, **kwargs):
 
@@ -69,7 +66,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         if self.normalise_input:
             x = x / np.linalg.norm(x, ord=2, axis=0)
-
+        args["verbose"] = self.verbose
         assoc_func = self._get_assoc_func()
         return assoc_func(x, y, **args, **kwargs)
 
@@ -84,45 +81,29 @@ class DCLasso(BaseEstimator, TransformerMixin):
         eps_stop: float = 1e-8,
         mode: str = "competitive",
         init="from_convex_solve",
+        optimizer: str = "SGD",
+        penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
+        opt_kwargs: dict = {
+            "init_value": 0.001,
+            "transition_steps": 100,
+            "decay_rate": 0.99,
+        },
     ):
 
-        self.precomputed_elements = False
         key = random.PRNGKey(seed)
 
-        # we have to prescreen and split
         X, y = check_X_y(X, y)
         X = np.asarray(X)
         n, p = X.shape
 
         (ny,) = y.shape
         assert n == ny
-        y = check_vector(y)
+        y = np.asarray(y)
 
         self.n_features_in_ = p
 
-        stop, screening, msg, d = knock_off_check_parameters(n, p, n1, d)
-
-        if stop:
-            # raise ValueError(msg)
-            print(msg)
-            self.alpha_indices_ = []
-            self.n_features_out_ = 0
-            return self
-
-        if screening:
-            print("Starting screening")
-
-            s1, s2 = generate_random_sets(n, n1, key)
-            X1, y1 = X[s1, :], y[s1]
-            X2, y2 = X[s2, :], y[s2]
-
-            self.screened_indices_ = self.screen(X1, y1, d)
-            X2 = X2[:, self.screened_indices_]
-
-        else:
-            print("No screening")
-            X2, y2 = X, y
-            self.screened_indices_ = np.arange(p)
+        # we have to prescreen and split if needed
+        X2, y2, self.screen_indices_, d = self.screen_split(X, y, n, p, n1, d, key)
 
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
@@ -132,22 +113,29 @@ class DCLasso(BaseEstimator, TransformerMixin):
         else:
             Xs = [X2, Xhat]
 
+        # Iterate on X if competitive
         betas = []
         for x in Xs:
-            loss_fn = self.compute_loss_fn(x, y2)
-            beta = self.initialisation(x.shape[1], key, init)
-            step_function, opt_state = self.set_optimizer(loss_fn, beta)
-
-            error_tmp = []
-            prev = np.inf
-            for _ in trange(max_epoch):
-                value, beta, opt_state = step_function(beta, opt_state)
-                error_tmp.append(float(value))
-                if abs(value - prev) < eps_stop:
-                    break
-                else:
-                    prev = value
-
+            # Penalty/Loss setting
+            loss_fn = self.compute_loss_fn(x, y2, penalty_kwargs)
+            step_function, opt_state, beta = self.setup_optimisation(
+                loss_fn,
+                optimizer,
+                x.shape[1],
+                key,
+                init,
+                self.Dxx,
+                self.Dxy,
+                opt_kwargs,
+            )
+            beta, value = minimize_loss(
+                step_function,
+                opt_state,
+                beta,
+                max_epoch,
+                eps_stop,
+                verbose=self.verbose,
+            )
             betas.append(beta)
 
         if mode == "competitive":
@@ -156,7 +144,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
             self.beta_ = np.concatenate([betas[0], betas[1]], axis=0)
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
-        alpha_thres = alpha_threshold(self.alpha, self.wjs_, self.screened_indices_)
+        alpha_thres = alpha_threshold(
+            self.alpha, self.wjs_, self.screen_indices_, verbose=self.verbose
+        )
 
         self.alpha_indices_ = alpha_thres[0]
         self.t_alpha_ = alpha_thres[1]
@@ -164,6 +154,116 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.final_loss_ = value
 
         return self
+
+    def cv_fit(
+        self,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
+        X_val: npt.ArrayLike,
+        y_val: npt.ArrayLike,
+        param_grid: dict,
+        n1: float,
+        d: int = None,
+        seed: int = 42,
+        max_epoch: int = 151,
+        eps_stop: float = 1e-8,
+        mode: str = "competitive",
+        init="from_convex_solve",
+        evaluate_function: Callable[
+            [npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike], float
+        ] = None,
+        refit: bool = True,
+    ):
+        if mode != "competitive":
+            raise NotImplementedError("Only competitive mode is implemented")
+        key = random.PRNGKey(seed)
+        X, y = check_X_y(X, y)
+        X = np.asarray(X)
+        X_val, y_val = check_X_y(X_val, y_val)
+        X_val = np.asarray(X_val)
+        n, p = X.shape
+
+        (ny,) = y.shape
+        assert n == ny
+        assert X_val.shape[0] == y_val.shape[0]
+        assert p == X_val.shape[1]
+        y = np.asarray(y)
+
+        self.n_features_in_ = p
+
+        generator_ms_kernel, hyperparameter_generator = gene_generators(
+            param_grid, self.measure_stat, self.kernel
+        )
+
+        best_score = np.inf
+        best_features = []
+        best_wj = []
+        dict_scores = {}
+        for ms, kernel in generator_ms_kernel:
+            self.measure_stat = ms
+            self.kernel = kernel
+            X2, y2, screen_indices, d = self.screen_split(X, y, n, p, n1, d, key)
+            Xhat = get_equi_features(X2, key)
+            self.ms_kwargs["precompute"] = precompute_kernels_match(
+                ms, X, y, kernel, self.ms_kwargs
+            )
+            Xs = np.concatenate([X2, Xhat], axis=1)
+            Dxy = self._compute_assoc(Xs, y2, **self.ms_kwargs)
+            Dxx = self._compute_assoc(Xs, **self.ms_kwargs)
+
+            for hyper in hyperparameter_generator:
+                if self.verbose:
+                    print(hyper)
+                optimizer = hyper["optimizer"]
+                penalty_kwargs = hyper["penalty_kwargs"]
+                opt_kwargs = hyper["opt_kwargs"]
+                loss_fn = partial(
+                    loss, Dxy=Dxy, Dxx=Dxx, penalty_func=pic_penalty(penalty_kwargs)
+                )
+                step_function, opt_state, beta = self.setup_optimisation(
+                    loss_fn, optimizer, Xs.shape[1], key, init, Dxx, Dxy, opt_kwargs
+                )
+                beta, _ = minimize_loss(
+                    step_function,
+                    opt_state,
+                    beta,
+                    max_epoch,
+                    eps_stop,
+                    verbose=self.verbose,
+                )
+                wj = beta[:d] - beta[d:]
+                selected_features, threshold, nout = alpha_threshold(
+                    self.alpha, wj, screen_indices, verbose=self.verbose
+                )
+                name = (
+                    f"ms={ms}_kernel={kernel}_optimizer={optimizer}"
+                    + f"_penalty={penalty_kwargs['name']}_lamb="
+                    + f"{penalty_kwargs['lamb']}_lr={opt_kwargs['init_value']}"
+                )
+                if nout:
+                    score = evaluate_function(
+                        X2[:, selected_features], y2, X_val[:, selected_features], y_val
+                    )
+                    dict_scores[name] = (score, selected_features)
+                    if score < best_score:
+                        best_score = score
+                        best_features = selected_features
+                        best_wj = wj[wj >= threshold]
+                else:
+                    dict_scores[name] = (np.inf, [])
+        if refit:
+            if nout:
+                self.alpha_indices_ = np.array(best_features)
+            else:
+                print("Warning: no features selected")
+        return best_score, best_features, best_wj, dict_scores
+
+    def transform(self, X: npt.ArrayLike) -> npt.ArrayLike:
+        if hasattr(self, "alpha_indices_"):
+            return X[:, self.alpha_indices_]
+        else:
+            print("Warning: not fitted, doing nothing..")
+            return X
 
     def fit_transform(self, X, y, **fit_params):
         """Fits and transforms an input dataset X and y.
@@ -180,7 +280,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         The new version of X corresponding to the selected features.
         """
 
-        return self.fit(X, y, **fit_params).transform(X, y)
+        return self.fit(X, y, **fit_params).transform(X)
 
     def _get_assoc_func(self):
         """Returns the correct association measure
@@ -204,50 +304,18 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 raise ValueError(error_msg)
         return f
 
-    def gene_penalty(self, kwargs):
-        penalty_func = pic_penalty(kwargs)
-        return penalty_func
-
     def _more_tags(self):
         return {"stateless": True}
 
-    def get_optimizer(self):
-        opt = self.optimizer
-        scheduler = optax.exponential_decay(
-            init_value=0.001, transition_steps=200, decay_rate=0.99
-        )
+    def setup_optimisation(self, loss_fn, opt, p, key, init, Dxx, Dxy, opt_kwargs):
+        """
+        Sets up the loss function for the optimisation.
+        """
+        beta = self.initialisation(p, key, init, Dxx, Dxy)
+        step_function, opt_state = self.set_optimizer(opt, loss_fn, beta, opt_kwargs)
+        return step_function, opt_state, beta
 
-        match opt:
-            case "SGD":
-                optimizer = optax.chain(
-                    optax.identity(),
-                    optax.scale_by_schedule(scheduler),
-                    optax.scale(-1.0),
-                    optax.keep_params_nonnegative(),
-                )
-
-            case "adam":
-                # Combining gradient transforms using `optax.chain`.
-                optimizer = optax.chain(
-                    optax.scale_by_adam(),  # Use the updates from adam.
-                    optax.scale_by_schedule(
-                        scheduler
-                    ),  # Use the learning rate from the scheduler.
-                    # Scale updates by -1 since optax.apply_updates is additive and we
-                    # want to descend on the loss.
-                    optax.scale(-1.0),
-                    optax.keep_params_nonnegative(),
-                )
-            case opt if opt.__class__ == GradientTransformation:
-                optimizer = opt
-            case _:
-                error_msg = f"Unkown optimizer: {opt}, should be a known string or of \
-                GradientTransformation class of the optax python package"
-                raise ValueError(error_msg)
-
-        return optimizer
-
-    def initialisation(self, p, key, init):
+    def initialisation(self, p, key, init, Dxx, Dxy):
         match init:
             case "random":
                 beta = random.uniform(
@@ -255,12 +323,12 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 )
             case "from_convex_solve":
                 # without penalty
-                beta = np.matmul(np.linalg.inv(self.Dxx), self.Dxy)
+                beta = np.matmul(np.linalg.inv(Dxx), Dxy)
                 beta = pos_proj(beta)
         return beta
 
-    def set_optimizer(self, loss_fn, beta):
-        optimizer = self.get_optimizer()
+    def set_optimizer(self, opt, loss_fn, beta, opt_kwargs):
+        optimizer = get_optimizer(opt, opt_kwargs)
         opt_state = optimizer.init(beta)
 
         def step(params, opt_state):
@@ -278,30 +346,63 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         return screened_indices
 
-    def compute_loss_fn(self, X, y):
-        match self.measure_stat:
-            case "HSIC" | "cMMD":
-                self.ms_kwargs["precompute"] = compute_kernels_for_am(
-                    X, y, self.kernel, **self.ms_kwargs
-                )
-            case "DC":
-                self.ms_kwargs["precompute"] = compute_distance_for_am(
-                    X, y, **self.ms_kwargs
-                )
+    def screen_split(self, X, y, n, p, n1, d, key):
+        """
+        If needed, screen the features of X and y and split X, y.
+        """
+
+        stop, screening, msg, d = knock_off_check_parameters(n, p, n1, d)
+
+        if stop:
+            raise ValueError(msg)
+
+        if screening:
+            if self.verbose:
+                print("Starting screening")
+
+            s1, s2 = generate_random_sets(n, n1, key)
+            X1, y1 = X[s1, :], y[s1]
+            X2, y2 = X[s2, :], y[s2]
+
+            screened_indices = self.screen(X1, y1, d)
+            X2 = X2[:, screened_indices]
+
+        else:
+            if self.verbose:
+                print("No screening")
+            X2, y2 = X, y
+            screened_indices = np.arange(p)
+
+        return X2, y2, screened_indices, d
+
+    def compute_loss_fn(self, X, y, penalty_kwargs):
+        self.ms_kwargs["precompute"] = precompute_kernels_match(
+            self.measure_stat, X, y, self.kernel, self.ms_kwargs
+        )
+
         # made as self so that they can re-used for the
         # initialisation
         self.Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
         self.Dxx = self._compute_assoc(X, **self.ms_kwargs)
 
-        def loss(b):
-            xy_term = -(b * self.Dxy).sum()
-            xx_term = 0.5 * (b * (self.Dxx * b).T).sum()
-            return xy_term + xx_term + self.penalty_func(b)
+        loss_fn = partial(
+            loss, Dxy=self.Dxy, Dxx=self.Dxx, penalty_func=pic_penalty(penalty_kwargs)
+        )
 
-        return loss
+        return loss_fn
 
 
-def alpha_threshold(alpha, wjs, indices):
+def precompute_kernels_match(measure_stat, X, y, kernel, ms_kwargs):
+    match measure_stat:
+        case "HSIC" | "cMMD":
+            return compute_kernels_for_am(X, y, kernel, **ms_kwargs)
+        case "DC":
+            return compute_distance_for_am(X, y, **ms_kwargs)
+        case _:
+            return None
+
+
+def alpha_threshold(alpha, wjs, indices, verbose=True):
     """
     Computes the selected features with respect to alpha.
     Parameters
@@ -315,11 +416,12 @@ def alpha_threshold(alpha, wjs, indices):
         2 - the threshold value.
         3 - the number of selected features.
     """
-    alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha)
-    if len(alpha_indices_):
-        print("selected features: ", alpha_indices_)
-    else:
-        print("No features were selected, returning empty set.")
+    alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha, verbose)
+    if verbose:
+        if len(alpha_indices_):
+            print("selected features: ", alpha_indices_)
+        else:
+            print("No features were selected, returning empty set.")
     n_features_out_ = len(alpha_indices_)
     return alpha_indices_, t_alpha_, n_features_out_
 
@@ -353,6 +455,61 @@ def pos_proj(array):
     return array.clip(0)
 
 
+def loss(b, Dxy, Dxx, penalty_func):
+    xy_term = -(b * Dxy).sum()
+    xx_term = 0.5 * (b * (Dxx * b).T).sum()
+    return xy_term + xx_term + penalty_func(b)
+
+
+def minimize_loss(step_function, opt_state, beta, max_epoch, eps_stop, verbose):
+    # error_tmp = []
+    prev = np.inf
+    # Minimizing loss function
+    range_epoch = trange(max_epoch) if verbose else range(max_epoch)
+    for _ in range_epoch:
+        value, beta, opt_state = step_function(beta, opt_state)
+        # error_tmp.append(float(value))
+        if abs(value - prev) < eps_stop:
+            break
+        else:
+            prev = value
+    return beta, value
+
+
+def get_optimizer(opt, opt_kwargs):
+    scheduler = optax.exponential_decay(**opt_kwargs)
+
+    match opt:
+        case "SGD":
+            optimizer = optax.chain(
+                optax.identity(),
+                optax.scale_by_schedule(scheduler),
+                optax.scale(-1.0),
+                optax.keep_params_nonnegative(),
+            )
+
+        case "adam":
+            # Combining gradient transforms using `optax.chain`.
+            optimizer = optax.chain(
+                optax.scale_by_adam(),  # Use the updates from adam.
+                optax.scale_by_schedule(
+                    scheduler
+                ),  # Use the learning rate from the scheduler.
+                # Scale updates by -1 since optax.apply_updates is additive and we
+                # want to descend on the loss.
+                optax.scale(-1.0),
+                optax.keep_params_nonnegative(),
+            )
+        case opt if opt.__class__ == GradientTransformation:
+            optimizer = opt
+        case _:
+            error_msg = f"Unkown optimizer: {opt}, should be a known string or of \
+            GradientTransformation class of the optax python package"
+            raise ValueError(error_msg)
+
+    return optimizer
+
+
 def compute_kernels_for_am(X, y, kernel, **kwargs):
     _, p = X.shape
     # mostly for HSIC and cMMD
@@ -368,7 +525,7 @@ def compute_kernels_for_am(X, y, kernel, **kwargs):
 
     @jit
     def precompY(k):
-        return jit_precompute_kernels(y[:, k])
+        return jit_precompute_kernels(y)
 
     Kx = vmap(precompX)(indicesX)
     Ky = vmap(precompY)(indicesY)
@@ -395,14 +552,14 @@ def compute_distance_for_am(X, y, **kwargs):
 
     @jit
     def precompY(k):
-        return jit_precompute_dist_y(y[:, k])
+        return jit_precompute_dist_y(y)
 
     Kx = vmap(precompX)(indicesX)
     Ky = vmap(precompY)(indicesY)
     return Kx, Ky
 
 
-def threshold_alpha(Ws, w_indice, alpha):
+def threshold_alpha(Ws, w_indice, alpha, verbose=True):
     """
     Computes the set defined by equation 3.8
     Parameters
@@ -431,7 +588,8 @@ def threshold_alpha(Ws, w_indice, alpha):
     t_alpha = np.where(fdp <= alpha)
     if t_alpha[0].size == 0:
         # no one selected..
-        print("alpha_min set to np.inf, no one selected...")
+        if verbose:
+            print("alpha_min set to np.inf, no one selected...")
         t_alpha_min = np.inf
     else:
         t_alpha_min = min(ts[t_alpha])
@@ -453,4 +611,69 @@ def threshold_alpha(Ws, w_indice, alpha):
     # dd = denomi_3_6_v(ts)
     #######################################
 
-    return indices, t_alpha
+    return indices, t_alpha_min
+
+
+def gene_generators(param_grid, measure_stat, kernel):
+    def ms_kernel_gen(param_grid, measure_stat, kernel):
+        if "measure_stat" in param_grid:
+            measure_stat = param_grid["measure_stat"]
+        else:
+            measure_stat = [measure_stat]
+        if "kernel" in param_grid:
+            kernel = param_grid["kernel"]
+        else:
+            kernel = [kernel]
+        for ms in measure_stat:
+            if ms in kernel_am:
+                for k in kernel:
+                    yield (ms, k)
+            else:
+                yield (ms, kernel[0])
+
+    def hp_gen(param_grid):
+        if "lambda" not in param_grid:
+            lambda_ = [0.5]
+        else:
+            lambda_ = param_grid["lambda"]
+
+        if "penalty" not in param_grid:
+            penalty = ["l1"]
+        else:
+            penalty = param_grid["penalty"]
+            if not isinstance(penalty, list):
+                penalty = [penalty]
+
+        if "learning_rate" not in param_grid:
+            learning_rate = [0.001]
+        else:
+            learning_rate = param_grid["learning_rate"]
+
+        if "optimizer" not in param_grid:
+            optimizer = ["adam"]
+        else:
+            optimizer = param_grid["optimizer"]
+            if not isinstance(optimizer, list):
+                optimizer = [optimizer]
+
+        dic = {}
+        dic["penalty_kwargs"] = {}
+        dic["opt_kwargs"] = {"transition_steps": 100, "decay_rate": 0.99}
+        for pen in penalty:
+            dic["penalty_kwargs"]["name"] = pen
+            for lr in learning_rate:
+                dic["opt_kwargs"]["init_value"] = lr
+                for opt in optimizer:
+                    dic["optimizer"] = opt
+                    for lam in lambda_:
+                        dic["penalty_kwargs"]["lamb"] = lam
+                        if (
+                            pen == "None"
+                            and dic["penalty_kwargs"]["lamb"] == lambda_[0]
+                        ):
+                            dic["penalty_kwargs"]["lamb"] = 0
+                            yield dic
+                        elif pen != "None" and dic["penalty_kwargs"]["lamb"] != 0:
+                            yield dic
+
+    return ms_kernel_gen(param_grid, measure_stat, kernel), hp_gen(param_grid)

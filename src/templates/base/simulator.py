@@ -6,17 +6,21 @@ import utils as u
 
 
 class Simulator:
-    def __init__(self, num_samples, num_features, correlated, binarize):
+    def __init__(self, num_samples, num_features, correlated, binarize, name=""):
         self.X = self.make_X(num_samples, num_features, correlated)
         self.y = self.formula(self.X) + self.noise(num_samples)
         self.featnames = np.arange(num_features)
 
-        u.save_scores_npz(self.featnames, [f in self.causal for f in self.featnames])
+        u.save_scores_npz(
+            self.featnames,
+            [f in self.causal for f in self.featnames],
+            name=f"causal{name}.npz",
+        )
 
         if binarize:
             self.y = self.binarize(self.y)
 
-        np.savez("simulation.npz", X=self.X, y=self.y, featnames=self.featnames)
+        np.savez(f"simulation{name}.npz", X=self.X, y=self.y, featnames=self.featnames)
 
     @abstractmethod
     def formula(self, X):

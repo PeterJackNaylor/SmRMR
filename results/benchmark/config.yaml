@@ -1,26 +1,33 @@
+config_path: results/benchmark/config.yaml
 out: results/benchmark
 repeat: 10
 num_samples: [100, 500]
 num_features: [100, 500]
-kernel: ["linear", "gaussian"]
-penalty: ["l1"] # "none", "scad", "mcp"]
-optimizer: ["SGD"] #, "adam"]
-simulation_models: ['categorical_1', 'categorical_2', 'linear_0']
-feature_selection:
+validation_samples: 100
+test_samples: 10000
+simulation_models:
+  - 'categorical_1'
+  - 'categorical_2'
+  - 'linear_0'
+penalty: ["scad", "None"]
+measure_stat: ["DC", "HSIC"]
+kernel: ["linear", "sigmoid"]
+dclasso:
   - name: dclasso
     parameters:
-      alpha: [0.5]
-      measure_stat: ["DC"]
+      alpha: 0.5
+      n1: 0.3
+      epoch: 150
       optimizer: ["adam"]
-      kernel: ["linear"]
-      measure_stat: ["DC", "HSIC"]
-      penalty: ["scad"]
-      n1: [0.3]
-  - name: stg
+      lambda: [0, 0.01, 0.1, 0.5, 1.0]
+      lr: [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1]
+feature_selection:
+  - name: hsic_lasso
     parameters:
-      learning_rates: [ 1e-5, 1e-4, 1e-3, 1e-2, 1e-1 ]
-      sigmas: [ 0.1, 0.2, 0.3, 0.5, 1.0 ]
-      lambdas: [ 5e-5, 5e-4, 5e-3, 5e-2, 5e-1 ]
+      penalty: ['l1']
+  - name: mrmr
+    parameters:
+      penalty: ['l1']
 prediction:
   - name: logistic_regression
     parameters:
@@ -43,6 +50,13 @@ prediction:
   - name: svc
     parameters:
       C: [ 0.5, 1, 2 ]
+
+feature_selection_and_classification:
+  - name: stg
+    parameters:
+      learning_rates: [ 1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1 ]
+      sigmas: [ 0.1, 0.2, 0.3, 0.5, 1.0 ]
+      lambdas: [ 5.e-5, 5.e-4, 5.e-3, 5.e-2, 5.e-1 ]
 performance_metrics:
-  tpr_fpr
-  features_tpr_fpr
+  - tpr_fpr
+  - features_tpr_fpr

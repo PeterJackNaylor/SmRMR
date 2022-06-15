@@ -13,7 +13,7 @@ from sklearn.metrics import mean_squared_error
 
 import utils as u
 
-_, y, _ = u.read_data("${TEST_NPZ}", "")
+_, y, _, _ = u.read_data("${TEST_NPZ}", "")
 y_pred = np.load("${PRED_NPZ}")["preds"]
 
 if len(y_pred):
