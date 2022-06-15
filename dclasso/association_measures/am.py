@@ -9,7 +9,7 @@ import numpy as onp
 
 
 class AM:
-    def __init__(self, batch_size=10000):
+    def __init__(self, batch_size=1000):
         self.batch_size = batch_size
 
     def __call__(self, X, Y=None, max_batch=None, **args):
