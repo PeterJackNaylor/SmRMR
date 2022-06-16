@@ -19,7 +19,7 @@ FORCE = 1
 include { simulate_data as test_data } from './utils.nf'
 
 process dclasso {
-    tag "model=DCLasso;${TAG});${PENALTY};${AM};${KERNEL}"
+    tag "model=DCLasso;data=${TAG});params=(${PENALTY};${AM};${KERNEL})"
     conda { AM == 'PC' ? '/data/ghighdim/pnaylor/project/dclasso/env_GPU/' : '/data/ghighdim/pnaylor/project/dclasso/env/'}
     clusterOptions { task.attempt <= 1 ? (AM == 'PC' ? '-jc gpu-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0': '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH') : (AM == 'PC' ? '-jc gs-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0' : '-jc pcc-large -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH') }
     errorStrategy 'retry'
@@ -32,7 +32,7 @@ process dclasso {
         each KERNEL
 
     output:
-        tuple val("model=DCLasso;${TAG};${PENALTY};${AM};${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=DCLasso;data=${TAG});params=(${PENALTY};${AM};${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     when:
         (AM == "HSIC") || (KERNEL == "linear")
@@ -42,14 +42,14 @@ process dclasso {
 }
 
 process feature_selection_and_classification {
-    tag "model=${MODEL};${TAG})"
+    tag "model=${MODEL.name};data=${TAG})"
     input:
         each MODEL
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
         path PARAMS_FILE
 
     output:
-        tuple val("model=${MODEL};${TAG}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=${MODEL.name};data=${TAG}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     script:
         template "feature_selection_and_classification/${MODEL.name}.py"
@@ -57,7 +57,7 @@ process feature_selection_and_classification {
 
 process feature_selection {
 
-    tag "${MODEL.name};${PARAMS}"
+    tag "feature_selection=${MODEL.name};data=${TAG})"
     afterScript 'mv scores.npz scores_feature_selection.npz'
 
     input:
@@ -66,7 +66,7 @@ process feature_selection {
         path PARAMS_FILE
 
     output:
-        tuple val("feature_selection=${MODEL.name}(${MODEL.parameters});${PARAMS}"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_feature_selection_${MODEL.name}.npz")
+        tuple val("feature_selection=${MODEL.name};data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_feature_selection_${MODEL.name}.npz")
 
     script:
         template "feature_selection/${MODEL.name}.py"
@@ -75,7 +75,7 @@ process feature_selection {
 
 process prediction {
 
-    tag "${MODEL};${PARAMS}"
+    tag "model=${MODEL.name};${PARAMS}"
     afterScript 'mv scores.npz scores_model.npz'
 
     input:
@@ -84,7 +84,7 @@ process prediction {
         path PARAMS_FILE
 
     output:
-        tuple val("model=${MODEL};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=${MODEL.name};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ), path('y_proba.npz'), path('y_pred.npz')
 
     script:
         template "${mode}/${MODEL.name}.py"
