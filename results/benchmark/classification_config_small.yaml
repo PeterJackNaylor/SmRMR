@@ -1,6 +1,6 @@
 config_path: results/benchmark/classification_config_small.yaml
 out: results/benchmark
-repeat: 4
+repeat: 2
 num_samples: [100, 500]
 num_features: [100, 500]
 validation_samples: 100

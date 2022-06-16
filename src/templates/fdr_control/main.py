@@ -12,7 +12,7 @@ Output files:
 import numpy as np
 from sklearn.utils.validation import check_X_y
 from scipy.sparse.linalg import eigsh
-from scipy.sparse.linalg.eigen.arpack import ArpackNoConvergence
+from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
 from dclasso import DCLasso, pic_penalty
 from dclasso.dc_lasso import alpha_threshold
 
