@@ -19,7 +19,7 @@ FORCE = 1
 include { simulate_data as test_data } from './utils.nf'
 
 process dclasso {
-    tag "model=DCLasso;data=${TAG});params=(${PENALTY};${AM};${KERNEL})"
+    tag "model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
         path PARAMS_FILE
@@ -28,7 +28,7 @@ process dclasso {
         each KERNEL
 
     output:
-        tuple val("model=DCLasso;data=${TAG});params=(${PENALTY};${AM};${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     when:
         (AM == "HSIC") || (KERNEL == "linear")
@@ -45,7 +45,7 @@ process feature_selection_and_classification {
         path PARAMS_FILE
 
     output:
-        tuple val("model=${MODEL.name};data=${TAG}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     script:
         template "feature_selection_and_classification/${MODEL.name}.py"
@@ -115,8 +115,9 @@ process plot {
             tuple path(PERFORMANCE), path("*.png"), path("*.html")
 
         script:
+            py = file("src/templates/benchmark/plot.py")
             """
-            python benchmark/plot.py $PERFORMANCE
+            python $py $PERFORMANCE
             """
 
 }
