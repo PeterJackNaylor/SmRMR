@@ -107,6 +107,24 @@ process performance {
 
 }
 
+process plot {
+
+        tag "benchmark"
+        publishDir "${params.out}/plots", mode: 'symlink'
+
+        input:
+            path PERFORMANCE
+
+        output:
+            tuple path(PERFORMANCE), path("*.png"), path("*.html")
+
+        script:
+            """
+            python benchmark/plot.py $PERFORMANCE
+            """
+
+}
+
 workflow simulation {
     main:
         simulate_data(params.simulation_models, params.num_samples, params.num_features, 1..params.repeat, 0, "")
@@ -147,4 +165,5 @@ workflow {
     main:
         simulation()
         models(simulation.out)
+        plot(models.out)
 }

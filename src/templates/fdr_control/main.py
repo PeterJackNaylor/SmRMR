@@ -12,7 +12,7 @@ Output files:
 import numpy as np
 from sklearn.utils.validation import check_X_y
 from scipy.sparse.linalg import eigsh
-
+from scipy.sparse.linalg.eigen.arpack import ArpackNoConvergence
 from dclasso import DCLasso, pic_penalty
 from dclasso.dc_lasso import alpha_threshold
 
@@ -81,7 +81,10 @@ for alpha in alpha_list[1:]:
     selected_variables.append(selected_features)
 
 # Some theoritical results
-lambda2 = float(eigsh(np.array(dl.Dxx), k=1, which="SA")[0].squeeze())
+try:
+    lambda2 = float(eigsh(np.array(dl.Dxx), k=1, which="SA")[0].squeeze())
+except ArpackNoConvergence:
+    lambda2 = 0
 Cst = 1.5
 R = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(dl.beta_))
 N1 = np.abs(dl.beta_).sum()
