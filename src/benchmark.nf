@@ -19,7 +19,7 @@ FORCE = 1
 include { simulate_data as test_data } from './utils.nf'
 
 process dclasso {
-    tag "model=DCLasso;data=${TAG});params=(${PENALTY};${AM};${KERNEL})"
+    tag "model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"
     conda { AM == 'PC' ? '/data/ghighdim/pnaylor/project/dclasso/env_GPU/' : '/data/ghighdim/pnaylor/project/dclasso/env/'}
     clusterOptions { task.attempt <= 1 ? (AM == 'PC' ? '-jc gpu-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0': '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH') : (AM == 'PC' ? '-jc gs-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0' : '-jc pcc-large -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH') }
     errorStrategy 'retry'
@@ -32,7 +32,7 @@ process dclasso {
         each KERNEL
 
     output:
-        tuple val("model=DCLasso;data=${TAG});params=(${PENALTY};${AM};${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     when:
         (AM == "HSIC") || (KERNEL == "linear")
@@ -49,7 +49,7 @@ process feature_selection_and_classification {
         path PARAMS_FILE
 
     output:
-        tuple val("model=${MODEL.name};data=${TAG}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     script:
         template "feature_selection_and_classification/${MODEL.name}.py"
@@ -119,8 +119,9 @@ process plot {
             tuple path(PERFORMANCE), path("*.png"), path("*.html")
 
         script:
+            py = file("src/templates/benchmark/plot.py")
             """
-            python benchmark/plot.py $PERFORMANCE
+            python $py $PERFORMANCE
             """
 
 }
