@@ -1,8 +1,8 @@
 config_path: results/benchmark/classification_config.yaml
 out: results/benchmark
 repeat: 20
-num_samples: [100, 500, 1000]
-num_features: [100, 500, 5000]
+num_samples: [100, 500]
+num_features: [100, 500]
 validation_samples: 100
 test_samples: 10000
 mode: classification

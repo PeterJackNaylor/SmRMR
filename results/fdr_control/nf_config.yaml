@@ -1,7 +1,7 @@
 out: results/fdr_control
 repeat: 20
-num_samples: [100, 500, 1000]
-num_features: [100, 500, 5000]
+num_samples: [100, 500]
+num_features: [100, 500]
 measure_stat:
 - "DC"
 - "HSIC"
