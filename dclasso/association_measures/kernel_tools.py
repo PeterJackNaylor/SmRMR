@@ -34,6 +34,17 @@ def get_kernel_function(name, nfeats=1):
                 kernel_params = {"sigma": np.sqrt(nfeats)}
             else:
                 kernel_params = {"sigma": None}
+        case "laplace":
+            kernel = kernel_laplace
+            if nfeats is not None:
+                kernel_params = {"sigma": np.sqrt(nfeats)}
+            else:
+                kernel_params = {"sigma": None}
+        case "tanh":
+            kernel = kernel_tanh
+        case "inverse-M":
+            kernel = kernel_inverse_M
+
         case "linear":
             kernel = kernel_linear
             kernel_params = {}
@@ -51,7 +62,7 @@ def get_kernel_function(name, nfeats=1):
 
 def compute_distance_matrix(x1, x2=None):
     """
-    Computes the distance matrix between x1 and x2.
+    Computes the l2 distance matrix between x1 and x2.
     If x2 isn't given, it will set x2 as x1 and compute
     the inner distance matrix of x1.
     Parameters
@@ -73,6 +84,30 @@ def compute_distance_matrix(x1, x2=None):
 
     dist_2 = x2_2 + x1_2.T - 2 * np.dot(x2, x1.T)
     return dist_2
+
+
+def compute_l1_distance_matrix(x1, x2=None):
+    """
+    Computes the l1 distance matrix between x1 and x2.
+    If x2 isn't given, it will set x2 as x1 and compute
+    the inner distance matrix of x1.
+    Parameters
+    ----------
+    x1: numpy array like object with one feature where the rows
+        designate samples.
+
+    x2: None or like x1.
+
+    Returns
+    -------
+    The distance matrix of x1 and x2.
+    """
+    x1 = check_vector(x1)
+
+    x2 = x1 if x2 is None else check_vector(x2)
+
+    dist_1 = np.absolute(x2 - x1.T)
+    return dist_1
 
 
 def kernel_gaussian(x1, x2=None, sigma=None):
@@ -104,6 +139,35 @@ def kernel_gaussian(x1, x2=None, sigma=None):
     return K
 
 
+def kernel_laplace(x1, x2=None, sigma=None):
+    """
+    Computes the distance matrix with the laplacian kernel.
+    If x2 isn't given, it will set x2 as x1 and compute
+    the inner distance matrix of x1.
+    If sigma is not given, it will be set according to the
+    median of the distance matrix.
+    Parameters
+    ----------
+    x1: numpy array like object with one feature where the rows
+        designate samples.
+
+    x2: None or like x1.
+
+    sigma: None or float, hyper parameter for the gaussian kernel.
+        If set to None, it takes sigma as the median of distance matrix.
+
+    Returns
+    -------
+    The gaussian kernel of the distance matrix of x1 and x2.
+    """
+    dist_1 = compute_l1_distance_matrix(x1, x2)
+    if sigma is None:
+        sigma = np.sqrt(np.var(dist_1))
+    K = np.exp(dist_1 / sigma)
+
+    return K
+
+
 def kernel_linear(x1, x2=None):
     """
     Computes the distance matrix with the linear kernel.
@@ -124,6 +188,53 @@ def kernel_linear(x1, x2=None):
     x2 = x1 if x2 is None else check_vector(x2)
 
     result = np.dot(x2, x1.T)
+    return result
+
+
+def kernel_tanh(x1, x2=None, d=1.0, alpha=1.0):
+    """
+    Computes the distance matrix with the tanh kernel.
+    If x2 isn't given, it will set x2 as x1 and compute
+    the inner distance matrix of x1.
+    Parameters
+    ----------
+    x1: numpy array like object with one feature where the rows
+        designate samples.
+
+    x2: None or like x1.
+
+    Returns
+    -------
+    The tanh kernel of the distance matrix of x1 and x2.
+    """
+
+    result = np.tanh(kernel_linear(x1, x2) / d + alpha)
+    return result
+
+
+def kernel_inverse_M(x1, x2=None, alpha=1.0, beta=1.0):
+    """
+    Computes the distance matrix with the inverse-M kernel.
+    If x2 isn't given, it will set x2 as x1 and compute
+    the inner distance matrix of x1.
+    Parameters
+    ----------
+    x1: numpy array like object with one feature where the rows
+        designate samples.
+
+    x2: None or like x1.
+
+    Returns
+    -------
+    The inverse-M kernel of the distance matrix of x1 and x2.
+    """
+
+    x1 = check_vector(x1)
+    x2 = x1 if x2 is None else check_vector(x2)
+
+    dist_2 = compute_distance_matrix(x1, x2)
+
+    result = (alpha + dist_2) ** (-beta)
     return result
 
 

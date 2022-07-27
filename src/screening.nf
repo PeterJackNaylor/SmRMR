@@ -8,7 +8,7 @@ repeats = 0..(params.repeat-1)
 KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
 
-include { simulate_data } from './utils.nf'
+include { simulate_data } from './nf_core/data_simulation.nf'
 
 process screen {
     tag "${PARAMS},${AM},${KERNEL})"

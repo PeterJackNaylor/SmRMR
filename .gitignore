@@ -11,6 +11,7 @@ results
 *.tsv
 *.csv
 *.npz
+.vscode/
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,r,jupyternotebooks,macos,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,r,jupyternotebooks,macos,linux

@@ -86,9 +86,9 @@ for alpha in alpha_list[1:]:
 
 # Some theoritical results
 try:
-    lambda2 = float(eigsh(np.array(dl.Dxx), k=1, which="SA")[0].squeeze())
+    alpha2 = float(eigsh(np.array(dl.Dxx), k=1, which="SA")[0].squeeze())
 except ArpackNoConvergence:
-    lambda2 = 0
+    alpha2 = 0
 Cst = 1.5
 R = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(dl.beta_))
 N1 = np.abs(dl.beta_).sum()
@@ -109,7 +109,7 @@ u.save_analysis_tsv(
     value=fdr_alpha,
     selected=selected_variables,
     loss=loss_value,
-    lambda_2=lambda2,
+    alpha2=alpha2,
     R=R,
     norm_1=N1,
 )

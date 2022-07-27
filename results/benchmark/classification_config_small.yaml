@@ -60,3 +60,4 @@ feature_selection_and_classification:
 performance_metrics:
   - tpr_fpr
   - features_tpr_fpr
+  - auc_roc

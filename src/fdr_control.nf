@@ -9,7 +9,7 @@ KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
 FIRST_LAMBDA = params.lambda[0]
 
-include { simulate_data } from './utils.nf'
+include { simulate_data } from './nf_core/data_simulation.nf'
 
 process fdr_control {
 

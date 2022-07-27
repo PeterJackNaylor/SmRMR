@@ -56,6 +56,7 @@ colors = {
     "DCLasso[(scad,PC,linear)]": "rgb(2,56,88)",
     "DCLasso[(None,PC,linear)]": "rgb(5,112,176)",
     "DCLasso[(l1,PC,linear)]": "rgb(116,169,207)",
+    "DCLasso[(mcp,PC,linear)]": "rgb(166,189,219)",
     "DCLasso[(mcp,HSIC,linear)]": "rgb(77,0,75)",
     "DCLasso[(scad,HSIC,linear)]": "rgb(129,15,124)",
     "DCLasso[(None,HSIC,linear)]": "rgb(136,65,157)",
@@ -68,11 +69,11 @@ colors = {
     "DCLasso[(scad,HSIC,sigmoid)]": "rgb(250,159,181)",
     "DCLasso[(None,HSIC,sigmoid)]": "rgb(174,1,126)",
     "DCLasso[(l1,HSIC,sigmoid)]": "rgb(250,159,181)",
-    "knn[hsic_lasso]": "rgb(229,245,249)",
-    "logistic_regression[hsic_lasso]": "rgb(153,216,201)",
-    "svc[hsic_lasso]": "rgb(65,174,118)",
-    "random_forest[hsic_lasso]": "rgb(0,109,44)",
-    "stg": "rgb(253,191,111)",
+    "knn[hsic_lasso]": "rgb(65,171,93)",
+    "logistic_regression[hsic_lasso]": "rgb(35,139,69)",
+    "svc[hsic_lasso]": "rgb(0,109,44)",
+    "random_forest[hsic_lasso]": "rgb(0,68,27)",
+    "stg": "rgb(116,196,118)",
 }
 
 print("group table by datasets")
@@ -122,9 +123,21 @@ for data_cat, data_by_data in table.groupby("data"):
         x_title="models",  # , 'font': {'size': 0}},
         y_title="scores",
     )
+    for_saving = pd.pivot_table(
+        data_by_data,
+        index=["run"],
+        columns=["metric"],
+        values=["value"],
+        aggfunc="mean",
+    )
+    for_saving.columns = [el[1] for el in for_saving.columns]
+    helpers = data_by_data[["n", "p", "params", "model", "run"]].groupby("run").first()
+    for_saving = for_saving.join(helpers)
 
+    for_saving.to_csv(f"results_{data_cat}.csv")
     groups = data_by_data.groupby(["n", "p", "model", "params", "feature_selection"])
     legend = []
+
     for g_n, group in groups:
         n, p, model, params, feature_selection = g_n
         n, p = int(n), int(p)
@@ -168,23 +181,23 @@ for data_cat, data_by_data in table.groupby("data"):
 
             fig.add_trace(boxes, row=row_dic[p], col=col_dic[n])
 
-fig.update_layout(
-    boxmode="group",
-    title="Comparing different methods on the simulated datasets",
-    xaxis_tickfont_size=14,
-    yaxis=dict(
-        title="USD (millions)",
-        titlefont_size=16,
-        tickfont_size=14,
-    ),
-    legend=dict(
-        x=0.75,
-        y=0.95,
-        bgcolor="rgba(255, 255, 255, 0)",
-        bordercolor="rgba(255, 255, 255, 0)",
-    ),
-    barmode="group",
-    bargap=0.15,  # gap between bars of adjacent location coordinates.
-    bargroupgap=0.1,  # gap between bars of the same location coordinate.
-)
-fig.show()
+    fig.update_layout(
+        boxmode="group",
+        title="Comparing different methods on the simulated datasets",
+        xaxis_tickfont_size=14,
+        yaxis=dict(
+            title="USD (millions)",
+            titlefont_size=16,
+            tickfont_size=14,
+        ),
+        legend=dict(
+            x=0.75,
+            y=0.95,
+            bgcolor="rgba(255, 255, 255, 0)",
+            bordercolor="rgba(255, 255, 255, 0)",
+        ),
+        barmode="group",
+        bargap=0.15,  # gap between bars of adjacent location coordinates.
+        bargroupgap=0.1,  # gap between bars of the same location coordinate.
+    )
+    fig.show()

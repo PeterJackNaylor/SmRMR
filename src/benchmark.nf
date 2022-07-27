@@ -6,7 +6,7 @@ params.out = '.'
 params.splits = 5
 params.mode = "regression"
 
-config = file(params.config_path)
+config = params.config_path
 mode = params.mode
 
 // simulation_models = ['linear_0']
@@ -14,18 +14,18 @@ mode = params.mode
 //model_algorithms = ['random_forest'] // 'logistic_regression', 'random_forest', 'svc', 'knn'
 // performance_metrics = ['tpr_fpr', 'features_tpr_fpr'] //'auc_roc',
 
-include { simulate_data; simulate_data as validation_data} from './utils.nf'
+include { simulate_data; simulate_data as validation_data} from './nf_core/data_simulation.nf'
 FORCE = 1
-include { simulate_data as test_data } from './utils.nf'
+include { simulate_data as test_data } from './nf_core/data_simulation.nf'
 
 process dclasso {
     tag "model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
-        path PARAMS_FILE
         each PENALTY
         each AM
         each KERNEL
+        val PARAMS_FILE
 
     output:
         tuple val("model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz"), path('y_proba.npz'), path('y_pred.npz')
@@ -42,7 +42,7 @@ process feature_selection_and_classification {
     input:
         each MODEL
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
-        path PARAMS_FILE
+        val PARAMS_FILE
 
     output:
         tuple val("model=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
@@ -59,7 +59,7 @@ process feature_selection {
     input:
         each MODEL
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
-        path PARAMS_FILE
+        val PARAMS_FILE
 
     output:
         tuple val("feature_selection=${MODEL.name};data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_feature_selection_${MODEL.name}.npz")
@@ -77,7 +77,7 @@ process prediction {
     input:
         each MODEL
         tuple val(PARAMS), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ)
-        path PARAMS_FILE
+        val PARAMS_FILE
 
     output:
         tuple val("model=${MODEL.name};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ), path('y_proba.npz'), path('y_pred.npz')
@@ -145,7 +145,7 @@ workflow models {
         feature_selection(params.feature_selection, data, config)
         prediction(params.prediction, feature_selection.out, config)
 
-        dclasso(data, config, params.penalty, params.measure_stat, params.kernel)
+        dclasso(data, params.penalty, params.measure_stat, params.kernel, config)
 
         feature_selection_and_classification(params.feature_selection_and_classification, data, config)
 
