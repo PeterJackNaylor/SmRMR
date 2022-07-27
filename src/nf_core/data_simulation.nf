@@ -1,0 +1,60 @@
+
+
+process simulate_data {
+
+    tag "${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES})"
+
+    input:
+        each SIMULATION
+        each NUM_SAMPLES
+        each NUM_FEATURES
+        each REPEATS
+        val FORCE
+        val NAME
+    output:
+        tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation${NAME}.npz"), path("causal${NAME}.npz")
+
+    when:
+        ((NUM_SAMPLES < NUM_FEATURES + 1) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))) || (FORCE == 1)
+
+    script:
+        template "simulation/${SIMULATION}.py"
+
+}
+
+
+process split_data {
+
+    tag "${PARAMS},${I})"
+
+    input:
+        tuple val(PARAMS), path(DATA_NPZ), path(CAUSAL_NPZ)
+        each I
+        val SPLITS
+
+    output:
+        tuple val("${PARAMS},${I})"), path("Xy_train.npz"), path("Xy_test.npz"), path(CAUSAL_NPZ)
+
+    script:
+        template 'data/kfold.py'
+
+}
+
+
+
+workflow simulation {
+    main:
+        simulate_data(params.simulation_models, params.num_samples, params.num_features, 1..params.repeat, 0, "")
+        validation_data(params.simulation_models, params.validation_samples, params.num_features, 1, 0, "_val")
+        test_data(params.simulation_models, params.test_samples, params.num_features, 1, 1, "_test")
+
+        simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
+                    .set{ train_split }
+        validation_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
+                    .set{ validation_split }
+        test_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
+                    .set{ test_split }
+        train_split .combine(validation_split, by: 0) .combine(test_split, by: 0) .set{ data }
+    emit:
+        data
+}
