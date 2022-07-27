@@ -123,10 +123,16 @@ process plot {
 }
 
 workflow simulation {
+        simulation_models
+        num_samples
+        validation_samples
+        test_samples
+        num_features
+        repeat
     main:
-        simulate_data(params.simulation_models, params.num_samples, params.num_features, 1..params.repeat, 0, "")
-        validation_data(params.simulation_models, params.validation_samples, params.num_features, 1, 0, "_val")
-        test_data(params.simulation_models, params.test_samples, params.num_features, 1, 1, "_test")
+        simulate_data(simulation_models, num_samples, num_features, 1..repeat, 0, "")
+        validation_data(simulation_models, validation_samples, num_features, 1, 0, "_val")
+        test_data(simulation_models, test_samples, num_features, 1, 1, "_test")
 
         simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
                     .set{ train_split }
@@ -140,19 +146,27 @@ workflow simulation {
 }
 
 workflow models {
-    take: data
+    take:
+        data
+        feature_selection_methods
+        prediction_methods
+        dclasso_penalty
+        dclasso_ms
+        dclasso_kernel
+        feature_and_join_classification_methods
+        metrics
     main:
-        feature_selection(params.feature_selection, data, config)
-        prediction(params.prediction, feature_selection.out, config)
+        feature_selection(feature_selection_methods, data, config)
+        prediction(prediction_methods, feature_selection.out, config)
 
-        dclasso(data, params.penalty, params.measure_stat, params.kernel, config)
+        dclasso(data, dclasso_penalty, dclasso_simulations, dclasso_kernel, config)
 
-        feature_selection_and_classification(params.feature_selection_and_classification, data, config)
+        feature_selection_and_classification(feature_and_join_classification_methods, data, config)
 
         dclasso.out .concat(feature_selection_and_classification.out) .concat(prediction.out) .set{ perf }
 
 
-        performance(params.performance_metrics, perf)
+        performance(metrics, perf)
 
     emit:
         performance.out.collectFile(name: "${params.out}/performance_${mode}.tsv", skip: 1, keepHeader: true)
@@ -160,7 +174,14 @@ workflow models {
 
 workflow {
     main:
-        simulation()
-        models(simulation.out)
+        simulation(
+            params.simulation_models, params.num_samples, params.validation_samples,
+            params.test_samples, params.num_features, params.repeat
+        )
+        models(
+            simulation.out, params.feature_selection, params.prediction, params.penalty,
+            params.measure_stat, params.kernel, params.feature_selection_and_classification,
+            params.performance_metrics
+        )
         plot(models.out)
 }
