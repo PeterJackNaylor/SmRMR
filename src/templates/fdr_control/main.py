@@ -68,13 +68,12 @@ selected_variables = []
 
 # Process
 
-dl = DCLasso(alpha=0.1, measure_stat=am, kernel=kernel)
+dl = DCLasso(alpha=alpha_list[0], measure_stat=am, kernel=kernel)
 
 dl.fit(X, y, n1=0.5, max_epoch=300, penalty_kwargs=penalty_kwargs, optimizer=optimizer)
 selected = list(np.array(dl.alpha_indices_))
 loss_value = float(dl.final_loss_)
-fdr_ = fdr(causal_feats, selected)
-fdr_alpha.append(fdr_)
+fdr_alpha.append(fdr(causal_feats, selected))
 selected_variables.append(selected)
 
 for alpha in alpha_list[1:]:

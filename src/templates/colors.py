@@ -12,9 +12,13 @@ precise_color_dictionnary = {
     "cMMD(linear)": "rgb(165,15,21)",
     "cMMD(distance)": "rgb(252,187,161)",
     "cMMD(gaussian)": "rgb(239,59,44)",
+    "HSIC(linear)": "rgb(222,235,247)",
     "HSIC(distance)": "rgb(198,219,239)",
-    "HSIC(linear)": "rgb(8,81,156)",
-    "HSIC(gaussian)": "rgb(107,174,214)",
+    "HSIC(sigmoid)": "rgb(158,202,225)",
+    "HSIC(inverse-M)": "rgb(107,174,214)",
+    "HSIC(tanh)": "rgb(66,146,198)",
+    "HSIC(laplacian)": "rgb(33,113,181)",
+    "HSIC(gaussian)": "rgb(8,81,156)",
     "HSIC_norm": "rgb(116,196,118)",
     "TR": "rgb(253,191,111)",
     "Pearson": "rgb(106,61,154)",
@@ -29,10 +33,13 @@ kernel_colours = {
         "distance": "rgb(252,187,161)",
     },
     "HSIC": {
-        "linear": "rgb(8,48,107)",
-        "gaussian": "rgb(33,113,181)",
-        "sigmoid": "rgb(107,174,214)",
+        "linear": "rgb(222,235,247)",
         "distance": "rgb(198,219,239)",
+        "sigmoid": "rgb(158,202,225)",
+        "inverse-M": "rgb(107,174,214)",
+        "tanh": "rgb(66,146,198)",
+        "laplacian": "rgb(33,113,181)",
+        "gaussian": "rgb(8,81,156)",
     },
     "HSIC_norm": {
         "linear": "rgb(0,109,44)",
@@ -68,7 +75,7 @@ mapping_data_name = {
 }
 
 
-def color_dictionnary_fdr(name, kernel):
+def color_dictionary_fdr(name, kernel):
     if kernel != "unspecified":
         return kernel_colours[name][kernel]
     else:
@@ -76,11 +83,14 @@ def color_dictionnary_fdr(name, kernel):
 
 
 inside_colors = {
-    "unspecified": "rgb(37,37,37)",
-    "linear": "rgb(37,37,37)",
-    "gaussian": "rgb(115,115,115)",
+    "unspecified": "rgb(247,247,247)",
+    "linear": "rgb(247,247,247)",
+    "distance": "rgb(217,217,217)",
     "sigmoid": "rgb(189,189,189)",
-    "distance": "rgb(240,240,240)",
+    "inverse-M": "rgb(150,150,150)",
+    "tanh": "rgb(115,115,115)",
+    "laplacian": "rgb(82,82,82)",
+    "gaussian": "rgb(37,37,37)",
 }
 
 
@@ -105,7 +115,7 @@ def helper(name, kernel):
     return name_mapping_fdr(name, kernel)
 
 
-color_dictionnary_fdr_keys = [
+color_dictionary_fdr_keys = [
     helper(am, kernel)
     for am in color_dictionnary.keys()
     for kernel in inside_colors.keys()

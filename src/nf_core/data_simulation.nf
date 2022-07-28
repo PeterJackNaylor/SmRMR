@@ -10,9 +10,9 @@ process simulate_data {
         each NUM_FEATURES
         each REPEATS
         val FORCE
-        val NAME
+        val PREFIX
     output:
-        tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation${NAME}.npz"), path("causal${NAME}.npz")
+        tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation${PREFIX}.npz"), path("causal${PREFIX}.npz")
 
     when:
         ((NUM_SAMPLES < NUM_FEATURES + 1) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))) || (FORCE == 1)

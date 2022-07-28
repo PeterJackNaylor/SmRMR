@@ -27,6 +27,7 @@ def get_kernel_function(name, nfeats=1):
     A tuple, where the first element is the kernel function
     and the second it's hyper parameter dictionnary.
     """
+    kernel_params = {}
     match name:
         case "gaussian":
             kernel = kernel_gaussian
@@ -34,8 +35,8 @@ def get_kernel_function(name, nfeats=1):
                 kernel_params = {"sigma": np.sqrt(nfeats)}
             else:
                 kernel_params = {"sigma": None}
-        case "laplace":
-            kernel = kernel_laplace
+        case "laplacian":
+            kernel = kernel_laplacian
             if nfeats is not None:
                 kernel_params = {"sigma": np.sqrt(nfeats)}
             else:
@@ -44,16 +45,13 @@ def get_kernel_function(name, nfeats=1):
             kernel = kernel_tanh
         case "inverse-M":
             kernel = kernel_inverse_M
-
         case "linear":
             kernel = kernel_linear
-            kernel_params = {}
         case "distance":
             kernel = kernel_alpha
             kernel_params = {"alpha": 1.0}
         case "sigmoid":
             kernel = kernel_sigmoid
-            kernel_params = {}
         case _:
             raise ValueError("No valid kernel.")
 
@@ -139,7 +137,7 @@ def kernel_gaussian(x1, x2=None, sigma=None):
     return K
 
 
-def kernel_laplace(x1, x2=None, sigma=None):
+def kernel_laplacian(x1, x2=None, sigma=None):
     """
     Computes the distance matrix with the laplacian kernel.
     If x2 isn't given, it will set x2 as x1 and compute

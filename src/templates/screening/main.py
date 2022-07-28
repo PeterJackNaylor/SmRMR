@@ -30,7 +30,7 @@ am_kernels = ["HSIC", "cMMD"]
 
 # Read data
 ############################
-X, y, featnames = u.read_data("${DATA_NPZ}")
+X, y, featnames, _ = u.read_data("${DATA_NPZ}")
 X, y = check_X_y(X, y)
 X = np.asarray(X)
 n, p = X.shape
@@ -49,7 +49,7 @@ causal_feats = causal_feats["featnames"][causal_feats["selected"]]
 am = "${AM}"
 kernel = "${KERNEL}" if am in am_kernels else ""
 
-dl = DCLasso(alpha="", measure_stat=am, kernel=kernel, penalty="", optimizer="")
+dl = DCLasso(alpha="", measure_stat=am, kernel=kernel)
 
 # Start screening
 ############################

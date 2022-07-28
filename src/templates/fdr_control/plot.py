@@ -5,21 +5,18 @@ Input variables:
 Output files:
     - *.png files
 """
+import os
+from colors import mapping_data_name
 
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-from colors import (
-    color_dictionnary_fdr,
-    color_dictionnary_fdr_keys,
-    name_mapping_fdr,
-    mapping_data_name,
+from utils_plot import (
+    read_and_prep_data,
+    make_subplot_fn,
+    add_2d_plot,
+    decorate_and_save,
 )
+from nice_tables import alpha2_table
 
-
-row_dic = {100: 1, 500: 2, 5000: 3}
-col_dic = {100: 1, 500: 2, 1000: 3}
+alpha_html = "<i>&#945;</i>"
 
 titles = tuple(
     f"<b> {text} </b>" if text != "" else text
@@ -47,32 +44,18 @@ id_ = [i / 100 for i in range(0, 105, 5)]
 
 def main():
     # Load data
-    table = pd.read_csv("${FILE}", sep="\t")
-    # set to 0 those which didn't select anything
-    table.loc[table["value"] == -1, "value"] = 0
-    table["kernel"] = table["kernel"].fillna("unspecified")
-    table = table.dropna()
-    table = table.loc[table["run"] != 0]
-    datasets = np.unique(table["run"])
+    grouping_var = ["optimizer", "penalty"]
+    table, grouped, datasets = read_and_prep_data(
+        "${FILE}", grouping=grouping_var, deal_with_None_penalty=False
+    )
 
-    group_optim_penal = table.groupby(["optimizer", "penalty"])
-    for (opti, penal), sub_table in group_optim_penal:
+    for (opti, penal), sub_table in grouped:
+
         for data in list(datasets):
             table_data = sub_table.loc[sub_table["run"] == data]
 
             groups = table_data.groupby(["n", "p", "AM", "kernel"])
-            fig = make_subplots(
-                rows=3,
-                cols=3,
-                shared_xaxes=True,
-                shared_yaxes=True,
-                vertical_spacing=0.06,
-                horizontal_spacing=0.04,
-                subplot_titles=titles,
-                x_title="<i>&#945;</i>",  # , 'font': {'size': 0}},
-                y_title="<i>FDR</i>",
-            )
-            legend = {el: True for el in color_dictionnary_fdr_keys}
+            fig_fdr, legend_fdr = make_subplot_fn(titles, alpha_html, "FDR")
 
             for g_n, group in groups:
 
@@ -81,71 +64,46 @@ def main():
                 name = g_n[2]
                 kernel = g_n[3]
 
-                alpha_group = group.groupby(["alpha"])
-                mean = alpha_group.mean()
-                sample_number = alpha_group.count()
-                std = alpha_group.std()
-
-                x = mean.index.sort_values()
-                y = mean.loc[x, "value"]
-                std = std.loc[x, "value"]
-                n_samples = sample_number.loc[x, "value"]
-                err = 1.96 * std / (n_samples) ** 0.5
-                curve_name = name_mapping_fdr(name, kernel)
-
-                curve = go.Scatter(
-                    x=x,
-                    y=y,
-                    name=curve_name,
-                    error_y=dict(array=err),
-                    marker=dict(
-                        color=color_dictionnary_fdr(
-                            name,
-                            kernel,  # only_kernel=only_kernel
-                        )
-                    ),
-                    showlegend=legend[curve_name],
+                y_var = "value"
+                vars_group = ["alpha"]
+                fig_fdr, legend_fdr = add_2d_plot(
+                    group,
+                    n,
+                    p,
+                    name,
+                    kernel,
+                    y_var,
+                    vars_group,
+                    fig_fdr,
+                    legend_fdr,
+                    legendrule="once",
+                    log_scale=False,
+                    add_abscisse=False,
+                    add_identity=True,
                 )
-
-                if legend[curve_name]:
-                    legend[curve_name] = False
-
-                fig.add_trace(curve, row=row_dic[p], col=col_dic[n])
-                fig.add_trace(
-                    go.Scatter(
-                        x=id_,
-                        y=id_,
-                        name="",
-                        marker={"color": "rgb(0, 0, 0)"},
-                        line=dict(width=0.5),
-                        showlegend=False,
-                    ),
-                    row=row_dic[p],
-                    col=col_dic[n],
-                )
-            title = f"Dataset: {mapping_data_name[data]}"
-            fig.update_layout(
-                template="ggplot2",
-                legend_title_text="Association measure:",
-                title={"text": title, "x": 0.85, "y": 0.88},
-                font=dict(size=22),
-            )
-
-            fig.layout.annotations[-2]["font"] = {"size": 30}
-            fig.layout.annotations[-1]["xshift"] -= 15
-            fig.layout.annotations[-1]["font"] = {"size": 22}
-            fig.update_yaxes(range=(0, 1.0), tickvals=tikz_y, ticktext=tikz_text_y)
-            fig.update_xaxes(range=(0, 1.0), tickvals=tikz_x, ticktext=tikz_text_x)
-            fig.update_layout(legend=dict(x=0.75, y=0.95))
 
             model_name = mapping_data_name[data].replace(".", "_")
-            basename = f"{model_name}_fdr_controls_{opti}_{penal}"
-            fig.write_image(
-                f"{basename}.png",
-                width=1350,
-                height=900,
+            # FDR figure
+            if not os.path.isdir("fdr"):
+                os.mkdir("fdr")
+            basename = f"fdr/{model_name}_fdr_controls_{opti}_{penal}"
+            decorate_and_save(
+                fig_fdr,
+                model_name,
+                None,
+                False,
+                basename,
+                tikz_y=tikz_y,
+                tikz_text_y=tikz_text_y,
+                y_range=(0, 1.0),
+                tikz_x=tikz_x,
+                tikz_text_x=tikz_text_x,
+                x_range=(0, 1.0),
             )
-            fig.write_html(f"{basename}.html")
+
+    # alpha 2 check, alpha 2 depends only on the measure, kernel and data
+    alpha2_values = alpha2_table(table)
+    alpha2_values.to_csv("alpha2_values.csv")
 
 
 if __name__ == "__main__":

@@ -7,9 +7,9 @@ from base.simulator import Simulator
 
 class Categorical1(Simulator):
     def __init__(
-        self, num_samples, num_features, correlated=False, binarize=False, name=""
+        self, num_samples, num_features, correlated=False, binarize=False, prefix=""
     ) -> None:
-        super().__init__(num_samples, num_features, correlated, binarize, name)
+        super().__init__(num_samples, num_features, correlated, binarize, prefix)
 
     def formula(self, X):
 
@@ -29,5 +29,5 @@ class Categorical1(Simulator):
 
 if __name__ == "__main__":
     Categorical1(
-        int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, True, name="${NAME}"
+        int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, True, prefix="${PREFIX}"
     )

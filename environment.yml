@@ -27,4 +27,7 @@ dependencies:
   - pandas
   - scikit-learn
   - plotly
+  - pip:
+    - jax[cpu]
+    - kaleido
   # - seaborn

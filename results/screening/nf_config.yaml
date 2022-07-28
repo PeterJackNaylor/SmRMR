@@ -1,11 +1,11 @@
 out: results/screening
-repeat: 10
+repeat: 20
 num_samples: [100, 500]
 num_features: [100, 500]
 measure_stat:
 - "DC"
 - "HSIC"
-kernel: ["linear", "gaussian"]
+kernel: ["tanh", "inverse-M"]
 simulation_models:
 - 'categorical_1'
 - 'categorical_2'

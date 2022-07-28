@@ -7,26 +7,24 @@ Output files:
 """
 
 import os
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-from colors import (
-    color_dictionnary_fdr,
-    color_dictionnary_fdr_keys,
-    name_mapping_fdr,
-    mapping_data_name,
+from colors import mapping_data_name
+from utils_plot import (
+    read_and_prep_data,
+    count_selected,
+    make_subplot_fn,
+    make_subplot_isoline,
+    make_subplot_3d,
+    add_2d_plot,
+    decorate_and_save,
+    compute_z_selected,
+    add_3d_plot,
+    add_iso_plots,
+    decorate_3d_mult_and_save,
+    decorate_multi_and_save,
 )
 
-if not os.path.isdir("loss"):
-    os.mkdir("loss")
-if not os.path.isdir("alpha_fdr"):
-    os.mkdir("alpha_fdr")
-if not os.path.isdir("selected_features"):
-    os.mkdir("selected_features")
-
-row_dic = {100: 1, 500: 2, 5000: 3}
-col_dic = {100: 1, 500: 2, 1000: 3}
+lambda_html = "<i>&#955;</i>"
+alpha_html = "<i>&#945;</i>"
 
 titles = tuple(
     f"<b> {text} </b>" if text != "" else text
@@ -53,293 +51,171 @@ id_ = [i / 100 for i in range(-100, 105, 5)]
 flat_line = [0 for el in id_]
 
 
-def count_selected(str_list):
-    if "," not in str_list:
-        return 0
-    else:
-        elements = str_list.split(",")
-        return len(elements)
-
-
-def new_name(am, ker):
-    if am == "HSIC":
-        return f"HSIC ({ker})"
-    else:
-        return am
-
-
 def main():
-    # Load data
-    # table = pd.read_csv("${FILE}", sep="\t")
-    table = pd.read_csv("performance.tsv", sep="\t")
-    # set to 0 those which didn't select anything
-    table.loc[table["value"] == -1, "value"] = 0
-    table["kernel"] = table["kernel"].fillna("unspecified")
-    table = table.dropna()
-    table = table.loc[table["run"] != 0]
-    table.loc[table["penalty"] == "none", "lamb"] = table["lamb"].min() / 10
+    grouping_var = ["optimizer", "penalty"]
+    table, grouped, datasets, if_none_0 = read_and_prep_data(
+        "${FILE}", grouping=grouping_var, deal_with_None_penalty=True
+    )
 
-    tmp_pen = [el for el in table["penalty"].unique() if el != "none"]
-    tmp_tab = table[table["penalty"] == "none"]
-    for pen in tmp_pen:
-        tmp_tab.loc[:, "penalty"] = pen
-        table = pd.concat([table, tmp_tab])
-    table = table[table["penalty"] != "none"]
-    datasets = np.unique(table["run"])
-    table["name"] = table.apply(lambda row: new_name(row["AM"], row["kernel"]), axis=1)
-    group_optim_penal = table.groupby(["optimizer", "penalty"])
-
-    for (opti, penal), sub_table in group_optim_penal:
+    for elements, sub_table in grouped:
+        opti, penal = elements
         for data in list(datasets):
             table_data = sub_table.loc[sub_table["run"] == data]
 
             groups = table_data.groupby(["n", "p", "AM", "kernel", "name"])
-            fig = make_subplots(
-                rows=3,
-                cols=3,
-                shared_xaxes=True,
-                shared_yaxes=True,
-                vertical_spacing=0.06,
-                horizontal_spacing=0.04,
-                subplot_titles=titles,
-                x_title="lambda",  # , 'font': {'size': 0}},
-                y_title="<i>&#945;</i> - <i>FDR</i>",
+
+            fig_alpha_fdr, legend_alpha_fdr = make_subplot_fn(
+                titles, lambda_html, alpha_html + " - FDR"
             )
-
-            fig_loss = make_subplots(
-                rows=3,
-                cols=3,
-                shared_xaxes=True,
-                shared_yaxes=False,
-                vertical_spacing=0.06,
-                horizontal_spacing=0.04,
-                subplot_titles=titles,
-                x_title="lambda",  # , 'font': {'size': 0}},
-                y_title="loss",
+            fig_loss_train, legend_loss_train = make_subplot_fn(
+                titles, lambda_html, "loss (train)"
             )
+            fig_loss_valid, legend_loss_valid = make_subplot_fn(
+                titles, lambda_html, "loss (validation)"
+            )
+            unique_models = table_data.name.unique()
+            fig_isoline = make_subplot_isoline(
+                titles, lambda_html, alpha_html, unique_models
+            )
+            fig_3d_selected_feats = make_subplot_3d(titles, unique_models)
 
-            def makeplot():
-                return make_subplots(
-                    rows=3,
-                    cols=3,
-                    vertical_spacing=0.06,
-                    horizontal_spacing=0.04,
-                    subplot_titles=titles,
-                    specs=[
-                        [{"is_3d": True}, {"is_3d": True}, {"is_3d": True}],
-                        [{"is_3d": True}, {"is_3d": True}, {"is_3d": True}],
-                        [{"is_3d": True}, {"is_3d": True}, {"is_3d": True}],
-                    ],
-                    print_grid=False,
-                )
-
-            fig_am = {el: makeplot() for el in table_data.name.unique()}
-            legend = {el: True for el in color_dictionnary_fdr_keys}
-            legend_loss = legend.copy()
             for g_n, group in groups:
 
                 n = int(g_n[0])
                 p = int(g_n[1])
                 name = g_n[2]
                 kernel = g_n[3]
-                group["control_diff"] = group["alpha"] - group["value"]
-                lamb_group = group.groupby(["lamb"])
-                mean = lamb_group.mean()
-                sample_number = lamb_group.count()
-                std = lamb_group.std()
-
-                # plot alpha - fdr
-                x = mean.index.sort_values()
-                y = mean.loc[x, "control_diff"]
-                std_y = std.loc[x, "control_diff"]
-                n_samples = sample_number.loc[x, "control_diff"]
-                err = 1.96 * std_y / (n_samples) ** 0.5
-                curve_name = name_mapping_fdr(name, kernel)
-                log_scale = np.log(x)
-                curve = go.Scatter(
-                    x=log_scale,
-                    y=y,
-                    name=curve_name,
-                    error_y=dict(array=err),
-                    marker=dict(
-                        color=color_dictionnary_fdr(
-                            name,
-                            kernel,  # only_kernel=only_kernel
-                        )
-                    ),
-                    showlegend=legend[curve_name],
+                vars_group = ["lamb"]
+                # alpha - fdr
+                y_var = "control_diff"
+                group[y_var] = group["alpha"] - group["value"]
+                fig_alpha_fdr, legend_alpha_fdr = add_2d_plot(
+                    group,
+                    n,
+                    p,
+                    name,
+                    kernel,
+                    y_var,
+                    vars_group,
+                    fig_alpha_fdr,
+                    legend_alpha_fdr,
+                    legendrule="once",
+                    log_scale=True,
+                    add_abscisse=True,
                 )
 
-                if legend[curve_name]:
-                    legend[curve_name] = False
-
-                fig.add_trace(curve, row=row_dic[p], col=col_dic[n])
-                fig.add_trace(
-                    go.Scatter(
-                        x=log_scale,
-                        y=[0 for el in list(log_scale)],
-                        name="",
-                        marker={"color": "rgb(0, 0, 0)"},
-                        line=dict(width=0.5),
-                        showlegend=False,
-                    ),
-                    row=row_dic[p],
-                    col=col_dic[n],
-                )
-
-                # plot loss vs lambda
+                # plot loss train vs lambda
                 alpha_group = group[group["alpha"] == 0.1]
-                lamb_group = alpha_group.groupby(["lamb"])
-                mean = lamb_group.mean()
-                sample_number = lamb_group.count()
-                std = lamb_group.std()
-
-                x = mean.index.sort_values()
-                y = mean.loc[x, "loss"]
-                std_y = std.loc[x, "loss"]
-                n_samples = sample_number.loc[x, "loss"]
-                err = 1.96 * std_y / (n_samples) ** 0.5
-                curve_name = name_mapping_fdr(name, kernel)
-                log_scale = np.log(x)
-                curve = go.Scatter(
-                    x=log_scale,
-                    y=y,
-                    name=curve_name,
-                    error_y=dict(array=err),
-                    marker=dict(
-                        color=color_dictionnary_fdr(
-                            name,
-                            kernel,  # only_kernel=only_kernel
-                        )
-                    ),
-                    showlegend=legend_loss[curve_name],
+                y_var = "loss_train"
+                fig_loss_train, legend_loss_train = add_2d_plot(
+                    alpha_group,
+                    n,
+                    p,
+                    name,
+                    kernel,
+                    y_var,
+                    vars_group,
+                    fig_loss_train,
+                    legend_loss_train,
+                    legendrule="once",
+                    log_scale=True,
+                    add_abscisse=False,
                 )
 
-                if legend_loss[curve_name]:
-                    legend_loss[curve_name] = False
-
-                fig_loss.add_trace(curve, row=row_dic[p], col=col_dic[n])
+                # plot loss validation vs lambda
+                y_var = "loss_valid"
+                fig_loss_valid, legend_loss_valid = add_2d_plot(
+                    alpha_group,
+                    n,
+                    p,
+                    name,
+                    kernel,
+                    y_var,
+                    vars_group,
+                    fig_loss_valid,
+                    legend_loss_valid,
+                    legendrule="once",
+                    log_scale=True,
+                    add_abscisse=False,
+                )
 
                 # selected features
-                group["n_selected"] = group.apply(
-                    lambda row: count_selected(row["selected"]), axis=1
+                z, x, y = compute_z_selected(
+                    group, count_selected, "selected", ["lamb", "alpha", "name"]
                 )
-                group_n = group[["lamb", "alpha", "n_selected", "name"]]
-                avg = group_n.groupby(["lamb", "alpha", "name"]).mean()
-                avg = avg.reset_index()
-                n_lamb = len(avg["lamb"].unique())
-                n_alpha = len(avg["alpha"].unique())
-                z = (
-                    avg.sort_values(["lamb", "alpha"])["n_selected"]
-                    .values.reshape(n_lamb, n_alpha, order="C")
-                    .T
-                )
-                fig3 = go.Surface(
-                    z=z,
-                    x=np.log(avg["lamb"].unique()),
-                    y=avg["alpha"].unique(),
-                    showscale=False,
+                fig_3d_selected_feats = add_3d_plot(
+                    fig_3d_selected_feats, p, n, z, x, y, group["name"].unique()[0]
                 )
 
-                fig_am[group["name"].unique()[0]].add_trace(
-                    fig3, row=row_dic[p], col=col_dic[n]
+                fig_isoline = add_iso_plots(
+                    fig_isoline, p, n, z, x, y, group["name"].unique()[0]
                 )
 
+            model_name = mapping_data_name[data].replace(".", "_")
+            if not os.path.isdir("alpha_fdr"):
+                os.mkdir("alpha_fdr")
             # alpha-FDR figure
-            title = f"Dataset: {mapping_data_name[data]}"
-            fig.update_layout(
-                template="ggplot2",
-                legend_title_text="Association measure:",
-                title={"text": title, "x": 0.85, "y": 0.88},
-                font=dict(size=22),
-            )
-
-            fig.layout.annotations[-2]["font"] = {"size": 30}
-            fig.layout.annotations[-1]["xshift"] -= 15
-            fig.layout.annotations[-1]["font"] = {"size": 22}
-            fig.update_yaxes(range=(-0.50, 1.0), tickvals=tikz_y, ticktext=tikz_text_y)
-            tikz_x = list(log_scale)
-            tikz_text_x = [f"{el}" for el in list(x)]
-            tikz_text_x[0] = "0"
-            fig.update_xaxes(
-                range=(log_scale.min(), log_scale.max()),
-                tickvals=tikz_x,
-                ticktext=tikz_text_x,
-            )
-            fig.update_layout(legend=dict(x=0.75, y=0.95))
-
-            model_name = mapping_data_name[data].replace(".", "_")
             basename = f"alpha_fdr/{model_name}_lambda_controls_{opti}_{penal}"
-            fig.write_image(
-                f"{basename}.png",
-                width=1350,
-                height=900,
-            )
-            fig.write_html(f"{basename}.html")
-
-            # loss figure
-            title = f"Dataset: {mapping_data_name[data]}"
-            fig_loss.update_layout(
-                template="ggplot2",
-                legend_title_text="Association measure:",
-                title={"text": title, "x": 0.85, "y": 0.88},
-                font=dict(size=22),
+            decorate_and_save(
+                fig_alpha_fdr,
+                model_name,
+                x,
+                if_none_0,
+                basename,
+                tikz_y=tikz_y,
+                tikz_text_y=tikz_text_y,
+                y_range=(-0.50, 1.0),
             )
 
-            fig_loss.layout.annotations[-2]["font"] = {"size": 30}
-            fig_loss.layout.annotations[-1]["xshift"] -= 15
-            fig_loss.layout.annotations[-1]["font"] = {"size": 22}
-            tikz_x = list(log_scale)
-            tikz_text_x = [f"{el}" for el in list(x)]
-            tikz_text_x[0] = "0"
-            fig_loss.update_xaxes(
-                range=(log_scale.min() - 0.1, log_scale.max() + 0.1),
-                tickvals=tikz_x,
-                ticktext=tikz_text_x,
+            # loss train figure
+            if not os.path.isdir("loss_train"):
+                os.mkdir("loss_train")
+            basename = f"loss_train/{model_name}_lambda_controls_loss_{opti}_{penal}"
+            decorate_and_save(
+                fig_loss_train, model_name, x, if_none_0, basename, extra_spacing_x=True
             )
-            fig_loss.update_layout(legend=dict(x=0.75, y=0.95))
 
-            model_name = mapping_data_name[data].replace(".", "_")
-            basename = f"loss/{model_name}_lambda_controls_loss_{opti}_{penal}"
-            fig_loss.write_image(
-                f"{basename}.png",
-                width=1350,
-                height=900,
+            # loss valid figure
+            if not os.path.isdir("loss_validation"):
+                os.mkdir("loss_validation")
+            basename = (
+                f"loss_validation/{model_name}_lambda_controls_loss_{opti}_{penal}"
             )
-            fig_loss.write_html(f"{basename}.html")
+            decorate_and_save(
+                fig_loss_valid, model_name, x, if_none_0, basename, extra_spacing_x=True
+            )
 
-            for el in table_data["name"].unique():
+            if not os.path.isdir("selected_features"):
+                os.mkdir("selected_features")
+            basename = f"{model_name}_selected_{opti}_{penal}"
+            decorate_3d_mult_and_save(
+                fig_3d_selected_feats,
+                model_name,
+                "lambda",
+                "alpha",
+                "Selected features",
+                unique_models,
+                "selected_features",
+                basename,
+                x,
+                if_none_0,
+                log_scale=True,
+            )
 
-                if not os.path.isdir(f"selected_features/{el}"):
-                    os.mkdir(f"selected_features/{el}")
-                title = f"Dataset: {mapping_data_name[data]}"
-                fig_am[el].update_layout(
-                    template="ggplot2", title={"text": title, "x": 0.85, "y": 0.88}
-                )
-                fig_am[el].update_scenes(
-                    xaxis_title_text="lambda",
-                    yaxis_title_text="alpha",
-                    zaxis_title="Selected features",
-                    xaxis=dict(ticktext=tikz_text_x, tickvals=tikz_x),
-                )
-                basename = (
-                    f"selected_features/{el}/{model_name}_selected_{opti}_{penal}"
-                )
-                fig_am[el].write_image(
-                    f"{basename}.png",
-                    width=1350,
-                    height=900,
-                )
-                fig_am[el].write_html(f"{basename}.html")
-
-                # tikz_x = list(log_scale)
-                # tikz_text_x = [f"{el}" for el in list(x)]
-                # tikz_text_x[0] = "0"
-                # fig3.update_layout(title='Selected features', autosize=False,
-                #   width=500, height=500,
-                #         ticktext= tikz_text_x,
-                #         tickvals= tikz_x)))
-                # import pdb; pdb.set_trace()
+            basename = f"{model_name}_isoline_{opti}_{penal}"
+            decorate_multi_and_save(
+                fig_isoline,
+                model_name,
+                lambda_html,
+                alpha_html,
+                "Selected features",
+                unique_models,
+                "selected_features",
+                basename,
+                x,
+                if_none_0,
+                log_scale=True,
+            )
 
 
 if __name__ == "__main__":

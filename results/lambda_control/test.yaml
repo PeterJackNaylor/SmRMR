@@ -1,12 +1,14 @@
 out: results/lambda_control
 repeat: 2
 num_samples: [100]
-num_features: [100]
+num_features: [100, 500, 5000]
+validation_samples: 100
 measure_stat:
 - "HSIC"
-kernel: ["gaussian"]
-penalty: ["l1"]
+kernel: ["laplacian", "tanh"]
+penalty: ["l1", "None"]
 optimizer: ["adam"]
-lambda: [0.001]
+lambda: [0.001, 0.1]
 simulation_models:
 - 'categorical_1'
+- 'categorical_2'

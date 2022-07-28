@@ -15,3 +15,10 @@ make setup
 # (optional) if you want to contribute, install pre-commit
 pre-commit install
 ```
+
+## Running experiments
+
+## Useful Environnement variables
+```bash
+DEPLOY = 1 # this variable can be set to run or the local or the long experiment
+```

@@ -12,9 +12,9 @@ include { simulate_data; simulate_data as validation_data} from './nf_core/data_
 
 process lambda_control {
 
-    tag "${PARAMS},${AM},${KERNEL})"
+    tag "${PARAMS},${AM},${KERNEL}"
     input:
-        tuple val(PARAMS), path(DATA_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
+        tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
         each AM
         each KERNEL
         each PENALTY
@@ -27,17 +27,18 @@ process lambda_control {
         ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL)) && ((LAMBDA == FIRST_LAMBDA) || (PENALTY != "none"))
 
     script:
-        template "fdr_control/main.py"
+        template "lambda_control/main.py"
 }
 
 
 process plot {
-    publishDir "${params.out}", mode: 'symlink'
+    publishDir "${params.out}", mode: 'symlink', overwrite: 'true'
+
     input:
         path FILE
 
     output:
-        tuple path(FILE), path("*.png"), path("*.html")
+        tuple path(FILE), path("loss_train"), path("loss_validation"), path("alpha_fdr"), path("selected_features")
 
     script:
         template "lambda_control/plot.py"
@@ -45,10 +46,15 @@ process plot {
 
 
 workflow simulation {
-
+    take:
+        simulation_models
+        num_samples
+        validation_samples
+        num_features
+        repeat
     main:
-        simulate_data(params.simulation_models, params.num_samples, params.num_features, 1..params.repeat, 0, "")
-        validation_data(params.simulation_models, params.validation_samples, params.num_features, 1, 0, "_val")
+        simulate_data(simulation_models, num_samples, num_features, 1..repeat, 0, "")
+        validation_data(simulation_models, validation_samples, num_features, 1, 0, "_val")
 
         simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
                     .set{ train_split }
@@ -67,6 +73,6 @@ workflow {
             params.num_features, params.repeat
         )
 
-        fdr_control(simulation.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, params.lambda)
-        plot(fdr_control.out.collectFile(skip: 1, keepHeader: true))
+        lambda_control(simulation.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, params.lambda)
+        plot(lambda_control.out.collectFile(skip: 1, keepHeader: true))
 }

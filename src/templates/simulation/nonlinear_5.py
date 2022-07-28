@@ -7,9 +7,9 @@ from base.simulator import Simulator
 
 class NonLinear5(Simulator):
     def __init__(
-        self, num_samples, num_features, correlated=False, binarize=False, name=""
+        self, num_samples, num_features, correlated=False, binarize=False, prefix=""
     ) -> None:
-        super().__init__(num_samples, num_features, correlated, binarize, name)
+        super().__init__(num_samples, num_features, correlated, binarize, prefix)
 
     def formula(self, X):
 
@@ -30,4 +30,4 @@ class NonLinear5(Simulator):
 
 
 if __name__ == "__main__":
-    NonLinear5(int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, name="${NAME}")
+    NonLinear5(int("${NUM_SAMPLES}"), int("${NUM_FEATURES}"), True, prefix="${PREFIX}")

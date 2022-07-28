@@ -37,7 +37,7 @@ process plot {
         path FILE
 
     output:
-        tuple path(FILE), path("*.png"), path("*.html")
+        tuple path(FILE), path("fdr"), path("alpha2_values.csv")
 
     script:
         template "fdr_control/plot.py"
