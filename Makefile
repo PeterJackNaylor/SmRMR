@@ -2,7 +2,7 @@
 # GLOBALS
 CONDA_ENV = ./env/
 CONDA_ACTIVATE = eval "$$(conda shell.bash hook)"; conda activate $(CONDA_ENV); export PYTHONPATH=`pwd`:$${PYTHONPATH}; [[ -z "${DEBUG}" ]] && export FILENAME='nf_config.yaml' || export FILENAME="test.yaml"
-
+PROFILE = -c ./nextflow.config -profile dclasso
 SHELL = bash
 
 .PHONY: $(CONDA_ENV) clean setup test jupyter
@@ -19,17 +19,17 @@ docker_build: Dockerfile
 	docker build -t dclasso .
 
 screening:
-	$(CONDA_ACTIVATE); nextflow src/screening.nf -params-file results/screening/$${FILENAME} -resume
+	$(CONDA_ACTIVATE); nextflow src/screening.nf $(PROFILE) -params-file results/screening/$${FILENAME} -resume
 
 fdr_control:
-	$(CONDA_ACTIVATE); nextflow src/fdr_control.nf -params-file results/fdr_control/$${FILENAME} -resume
+	$(CONDA_ACTIVATE); nextflow src/fdr_control.nf $(PROFILE) -params-file results/fdr_control/$${FILENAME} -resume
 
 lambda_control:
-	$(CONDA_ACTIVATE); nextflow src/lambda_control.nf -params-file results/lambda_control/$${FILENAME} -resume
+	$(CONDA_ACTIVATE); nextflow src/lambda_control.nf $(PROFILE) -params-file results/lambda_control/$${FILENAME} -resume
 
 benchmark: results/benchmark/config.yaml
-	$(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/classification_config.yaml -resume
-	# $(CONDA_ACTIVATE); nextflow src/benchmark.nf -params-file results/benchmark/config_small.yaml -resume
+	$(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/classification_config.yaml -resume
+	# $(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/config_small.yaml -resume
 
 test:
 	$(CONDA_ACTIVATE); pytest test
