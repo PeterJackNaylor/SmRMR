@@ -4,14 +4,24 @@ num_samples: [100, 500, 1000]
 num_features: [100, 500, 5000]
 validation_samples: 100
 measure_stat:
+- "DC"
 - "HSIC"
 - "PC"
-kernel: ["gaussian", "inverse-M"]
+- "pearson_correlation"
+kernel: ["linear", "gaussian", "sigmoid", "laplacian", "tanh", "inverse-M"]
 penalty: ["l1", "none", "scad", "mcp"]
 optimizer: ["SGD", "adam"]
 lambda: [0.001, 0.01, 0.1, 0.5, 1.0, 10.0]
 simulation_models:
 - 'categorical_1'
+- 'categorical_2'
+# - 'categorical_3'
 - 'linear_0'
 - 'linear_1'
+# - 'linear_2'
+# - 'linear_3'
 - 'nonlinear_1'
+- 'nonlinear_2'
+# - 'nonlinear_3'
+# - 'nonlinear_4'
+# - 'nonlinear_5'
