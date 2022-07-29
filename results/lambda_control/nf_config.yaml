@@ -6,7 +6,7 @@ validation_samples: 100
 measure_stat:
 - "HSIC"
 - "PC"
-kernel: ["gaussian"]
+kernel: ["gaussian", "inverse-M"]
 penalty: ["l1", "none", "scad", "mcp"]
 optimizer: ["SGD", "adam"]
 lambda: [0.001, 0.01, 0.1, 0.5, 1.0, 10.0]
