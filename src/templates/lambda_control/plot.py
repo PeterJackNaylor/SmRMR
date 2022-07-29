@@ -73,6 +73,9 @@ def main():
             fig_loss_valid, legend_loss_valid = make_subplot_fn(
                 titles, lambda_html, "loss (validation)"
             )
+            fig_R_constraint, legend_R_constraint = make_subplot_fn(
+                titles, lambda_html, "loss (validation)"
+            )
             unique_models = table_data.name.unique()
             fig_isoline = make_subplot_isoline(
                 titles, lambda_html, alpha_html, unique_models
@@ -120,6 +123,7 @@ def main():
                     legendrule="once",
                     log_scale=True,
                     add_abscisse=False,
+                    scale_by_max=True,
                 )
 
                 # plot loss validation vs lambda
@@ -134,6 +138,27 @@ def main():
                     vars_group,
                     fig_loss_valid,
                     legend_loss_valid,
+                    legendrule="once",
+                    log_scale=True,
+                    add_abscisse=False,
+                    scale_by_max=True,
+                )
+
+                # plot R - norm1
+                y_var = "diff_R_norm1"
+                alpha_group[y_var] = (
+                    alpha_group["R"] - alpha_group["norm_1"]
+                ) / alpha_group["R"]
+                fig_R_constraint, legend_R_constraint = add_2d_plot(
+                    alpha_group,
+                    n,
+                    p,
+                    name,
+                    kernel,
+                    y_var,
+                    vars_group,
+                    fig_R_constraint,
+                    legend_R_constraint,
                     legendrule="once",
                     log_scale=True,
                     add_abscisse=False,
@@ -183,6 +208,19 @@ def main():
             )
             decorate_and_save(
                 fig_loss_valid, model_name, x, if_none_0, basename, extra_spacing_x=True
+            )
+
+            # R constraint figure
+            if not os.path.isdir("R_constraint"):
+                os.mkdir("R_constraint")
+            basename = f"R_constraint/{model_name}_R_constraint_{opti}_{penal}"
+            decorate_and_save(
+                fig_R_constraint,
+                model_name,
+                x,
+                if_none_0,
+                basename,
+                extra_spacing_x=True,
             )
 
             if not os.path.isdir("selected_features"):

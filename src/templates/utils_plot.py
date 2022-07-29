@@ -128,8 +128,11 @@ def add_2d_plot(
     log_scale=True,
     add_abscisse=True,
     add_identity=False,
+    scale_by_max=False,
 ):
 
+    if scale_by_max:
+        data[y_var] = data[y_var] / data[y_var].abs().max()
     grouped_by_var = data.groupby(grouping_var)
     mean = grouped_by_var.mean()
     sample_number = grouped_by_var.count()
@@ -137,6 +140,8 @@ def add_2d_plot(
 
     x = mean.index.sort_values()
     y = mean.loc[x, y_var]
+    # if scale_by_max:
+    #     y = y / np.absolute(y.max())
     std_y = std.loc[x, y_var]
     n_samples = sample_number.loc[x, y_var]
     err = 1.96 * std_y / (n_samples) ** 0.5
