@@ -2,7 +2,7 @@
 # GLOBALS
 CONDA_ENV = ./env/
 CONDA_ACTIVATE = eval "$$(conda shell.bash hook)"; conda activate $(CONDA_ENV); export PYTHONPATH=`pwd`:$${PYTHONPATH}; [[ -z "${DEBUG}" ]] && export FILENAME='nf_config.yaml' || export FILENAME="test.yaml"
-PROFILE = -c ./nextflow.config -profile dclasso
+PROFILE = -c ./nextflow.config -profile dclasso -N peter.naylor@riken.jp
 SHELL = bash
 
 .PHONY: $(CONDA_ENV) clean setup test jupyter
