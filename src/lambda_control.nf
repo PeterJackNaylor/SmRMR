@@ -12,7 +12,7 @@ include { simulate_data; simulate_data as validation_data} from './nf_core/data_
 
 process lambda_control {
 
-    tag "${TAG},${AM},${KERNEL}"
+    tag "${TAG}),${AM},${KERNEL}"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
         each AM

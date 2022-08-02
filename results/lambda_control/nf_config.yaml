@@ -9,8 +9,8 @@ measure_stat:
 - "HSIC"
 - "PC"
 - "pearson_correlation"
-kernel: ["linear", "gaussian", "sigmoid", "laplacian", "tanh", "inverse-M"]
-penalty: ["l1", "none", "scad", "mcp"]
+kernel: ["linear", "gaussian",  "tanh", "inverse-M"] # "sigmoid", "laplacian",
+penalty: ["l1", "None", "scad", "mcp"]
 optimizer: ["SGD", "adam"]
 lambda: [0.001, 0.01, 0.1, 0.5, 1.0, 10.0]
 simulation_models:
