@@ -13,7 +13,6 @@ Output files:
 """
 import yaml
 from functools import partial
-from itertools import product
 import numpy as np
 from jax import random
 import jax.numpy as jnp
@@ -32,6 +31,13 @@ import utils as u
 
 key = random.PRNGKey(42)
 Cst = 1.5
+max_epoch = 300
+eps_stop = 1e-8
+opt_kwargs = {
+    "init_value": 0.001,
+    "transition_steps": 100,
+    "decay_rate": 0.99,
+}
 
 
 def fdr(causal_features, selected_features):
@@ -47,19 +53,21 @@ def fdr(causal_features, selected_features):
         return fdr
 
 
-def perform_alpha_computations(alpha_list, wjs, screen_indices):
+def perform_alpha_computations(alpha_list, wjs, screen_indices, causal_features):
     run_fdr = []
     run_var_selected = []
     for alpha in alpha_list:
 
         selected_features, _, _ = alpha_threshold(alpha, wjs, screen_indices)
         selected_features = list(np.array(selected_features))
-        run_fdr.append(fdr(causal_feats, selected_features))
+        run_fdr.append(fdr(causal_features, selected_features))
         run_var_selected.append(selected_features)
     return run_fdr, run_var_selected
 
 
-def perform_optimisation_with_parameters(dclasso_main, pen, opt, lam, alpha_list, d):
+def perform_optimisation_with_parameters(
+    dclasso_main, pen, opt, lam, alpha_list, d, causal_features
+):
     penalty_kwargs = {"name": pen, "lamb": lam}
     loss_fn = partial(
         loss,
@@ -71,7 +79,7 @@ def perform_optimisation_with_parameters(dclasso_main, pen, opt, lam, alpha_list
     step_function, opt_state, beta = dclasso_main.setup_optimisation(
         loss_fn,
         opt,
-        X_val.shape[1],
+        d,
         key,
         "from_convex_solve",
         dclasso_main.Dxx,
@@ -88,7 +96,7 @@ def perform_optimisation_with_parameters(dclasso_main, pen, opt, lam, alpha_list
     )
     wjs = beta[:d] - beta[d:]
     fdr_l, selected_l = perform_alpha_computations(
-        alpha_list, wjs, dclasso_main.screen_indices_
+        alpha_list, wjs, dclasso_main.screen_indices_, causal_features
     )
     loss_fn = partial(
         loss,
@@ -97,10 +105,23 @@ def perform_optimisation_with_parameters(dclasso_main, pen, opt, lam, alpha_list
         penalty_func=pic_penalty(penalty_kwargs),
     )
     loss_valid = float(loss_fn(beta))
-    R = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(beta))
+    if pen != "None":
+        R = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(beta))
+    else:
+        R = 0.0
     N1 = np.abs(beta).sum()
 
     return fdr_l, selected_l, loss_train, loss_valid, R, N1
+
+
+def build_iterator(penalty_list, optimizer_list, lambdas_list):
+    for opt in optimizer_list:
+        for pen in penalty_list:
+            if pen == "None":
+                yield pen, opt, 0
+            else:
+                for lam in lambdas_list:
+                    yield pen, opt, lam
 
 
 am_kernels = ["HSIC", "cMMD"]
@@ -137,9 +158,10 @@ penalty = param_grid["penalty"]
 optimizer = param_grid["optimizer"]
 lambdas = param_grid["lambda"]
 
-penalty_init = penalty[0]
-optimizer_init = optimizer[0]
-lambda_init = lambdas[0]
+
+iterable = build_iterator(penalty, optimizer, lambdas)
+
+penalty_init, optimizer_init, lambda_init = next(iterable)
 
 penalty_kwargs = {"name": penalty_init, "lamb": lambda_init}
 
@@ -159,13 +181,6 @@ alpha_parameter = []
 
 
 # default parameters
-opt_kwargs = {
-    "init_value": 0.001,
-    "transition_steps": 100,
-    "decay_rate": 0.99,
-}
-max_epoch = 300
-eps_stop = 1e-8
 
 # Process
 
@@ -206,7 +221,7 @@ loss_fn = partial(
 loss_valid__ = float(loss_fn(dl.beta_))
 
 fdr__, selected__ = perform_alpha_computations(
-    alpha_list[1:], dl.wjs_, dl.screen_indices_
+    alpha_list[1:], dl.wjs_, dl.screen_indices_, causal_feats
 )
 
 penalties_parameter += [penalty_init] * len(alpha_list)
@@ -222,8 +237,7 @@ selected_variables += [selected_] + selected__
 
 
 # Loop over parameters
-iterable = product(penalty, optimizer, lambdas)
-next(iterable)
+
 for pen, opt, lam in iterable:
     penalty_kwargs = {"name": pen, "lamb": lam}
     (
@@ -233,7 +247,9 @@ for pen, opt, lam in iterable:
         loss_valid__,
         R__,
         N1__,
-    ) = perform_optimisation_with_parameters(dl, pen, opt, lam, alpha_list, d)
+    ) = perform_optimisation_with_parameters(
+        dl, pen, opt, lam, alpha_list, d, causal_feats
+    )
     penalties_parameter += [pen] * len(alpha_list)
     optimizers__parameter += [opt] * len(alpha_list)
     lambda_parameter += [lam] * len(alpha_list)

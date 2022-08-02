@@ -12,7 +12,7 @@ include { simulate_data; simulate_data as validation_data} from './nf_core/data_
 
 process lambda_control {
 
-    tag "${PARAMS},${AM},${KERNEL}"
+    tag "${TAG},${AM},${KERNEL}"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
         each AM
@@ -22,7 +22,7 @@ process lambda_control {
         path "performance.tsv"
 
     when:
-        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL)) && ((LAMBDA == FIRST_LAMBDA) || (PENALTY != "none"))
+        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL))
 
     script:
         template "lambda_control/main.py"
