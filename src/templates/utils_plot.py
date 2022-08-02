@@ -366,7 +366,6 @@ def decorate_multi_and_save(
     data_name,
     xname,
     yname,
-    zname,
     unique_models,
     pathfolder,
     basename,
@@ -398,7 +397,7 @@ def decorate_multi_and_save(
             yaxis_title_text=yname,
             # xaxis=dict(ticktext=tikz_text_x, tickvals=tikz_x),
         )
-        basename_f = f"selected_features/{el}/{basename}"
+        basename_f = f"{pathfolder}/{el}/{basename}"
         fig[el].write_image(
             f"{basename_f}.png",
             width=1350,

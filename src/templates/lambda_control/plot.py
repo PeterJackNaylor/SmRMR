@@ -13,15 +13,20 @@ from utils_plot import (
     count_selected,
     make_subplot_fn,
     make_subplot_isoline,
-    make_subplot_3d,
+    # make_subplot_3d,
     add_2d_plot,
     decorate_and_save,
     compute_z_selected,
-    add_3d_plot,
+    # add_3d_plot,
     add_iso_plots,
-    decorate_3d_mult_and_save,
+    # decorate_3d_mult_and_save,
     decorate_multi_and_save,
 )
+
+
+def identity(x):
+    return x
+
 
 lambda_html = "<i>&#955;</i>"
 alpha_html = "<i>&#945;</i>"
@@ -74,13 +79,16 @@ def main():
                 titles, lambda_html, "loss (validation)"
             )
             fig_R_constraint, legend_R_constraint = make_subplot_fn(
-                titles, lambda_html, "loss (validation)"
+                titles, lambda_html, "R - N1(beta)"
             )
             unique_models = table_data.name.unique()
             fig_isoline = make_subplot_isoline(
                 titles, lambda_html, alpha_html, unique_models
             )
-            fig_3d_selected_feats = make_subplot_3d(titles, unique_models)
+            fig_isoline_fdr = make_subplot_isoline(
+                titles, lambda_html, alpha_html, unique_models
+            )
+            # fig_3d_selected_feats = make_subplot_3d(titles, unique_models)
 
             for g_n, group in groups:
 
@@ -168,14 +176,27 @@ def main():
                 z, x, y = compute_z_selected(
                     group, count_selected, "selected", ["lamb", "alpha", "name"]
                 )
-                fig_3d_selected_feats = add_3d_plot(
-                    fig_3d_selected_feats, p, n, z, x, y, group["name"].unique()[0]
-                )
+                # fig_3d_selected_feats = add_3d_plot(
+                #     fig_3d_selected_feats, p, n, z, x, y, group["name"].unique()[0]
+                # )
 
                 fig_isoline = add_iso_plots(
                     fig_isoline, p, n, z, x, y, group["name"].unique()[0]
                 )
 
+                z_fdr, x_fdr, y_fdr = compute_z_selected(
+                    group, identity, "value", ["lamb", "alpha", "name"]
+                )
+
+                fig_isoline_fdr = add_iso_plots(
+                    fig_isoline_fdr,
+                    p,
+                    n,
+                    z_fdr,
+                    x_fdr,
+                    y_fdr,
+                    group["name"].unique()[0],
+                )
             model_name = mapping_data_name[data].replace(".", "_")
             if not os.path.isdir("alpha_fdr"):
                 os.mkdir("alpha_fdr")
@@ -225,20 +246,20 @@ def main():
 
             if not os.path.isdir("selected_features"):
                 os.mkdir("selected_features")
-            basename = f"{model_name}_selected_{opti}_{penal}"
-            decorate_3d_mult_and_save(
-                fig_3d_selected_feats,
-                model_name,
-                "lambda",
-                "alpha",
-                "Selected features",
-                unique_models,
-                "selected_features",
-                basename,
-                x,
-                if_none_0,
-                log_scale=True,
-            )
+            # basename = f"{model_name}_selected_{opti}_{penal}"
+            # decorate_3d_mult_and_save(
+            #     fig_3d_selected_feats,
+            #     model_name,
+            #     "lambda",
+            #     "alpha",
+            #     "Selected features",
+            #     unique_models,
+            #     "selected_features",
+            #     basename,
+            #     x,
+            #     if_none_0,
+            #     log_scale=True,
+            # )
 
             basename = f"{model_name}_isoline_{opti}_{penal}"
             decorate_multi_and_save(
@@ -246,9 +267,24 @@ def main():
                 model_name,
                 lambda_html,
                 alpha_html,
-                "Selected features",
                 unique_models,
                 "selected_features",
+                basename,
+                x,
+                if_none_0,
+                log_scale=True,
+            )
+            if not os.path.isdir("fdr_control_isoline"):
+                os.mkdir("fdr_control_isoline")
+
+            basename = f"{model_name}_fdr_control_{opti}_{penal}"
+            decorate_multi_and_save(
+                fig_isoline_fdr,
+                model_name,
+                lambda_html,
+                alpha_html,
+                unique_models,
+                "fdr_control_isoline",
                 basename,
                 x,
                 if_none_0,
