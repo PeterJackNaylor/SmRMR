@@ -3,7 +3,7 @@ config_path: results/lambda_control/nf_config.yaml
 repeat: 20
 num_samples: [100, 500, 1000]
 num_features: [100, 500, 5000]
-validation_samples: 100
+validation_samples: 200
 measure_stat:
 - "DC"
 - "HSIC"

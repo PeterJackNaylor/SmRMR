@@ -40,14 +40,15 @@ def read_and_prep_data(file_name, grouping, deal_with_None_penalty=True):
 
     if deal_with_None_penalty:
         if_none_0 = "None" in table["penalty"].unique()
-        table.loc[table["penalty"] == "None", "lamb"] = table["lamb"].min() / 10
-
-        tmp_pen = [el for el in table["penalty"].unique() if el != "None"]
-        tmp_tab = table[table["penalty"] == "None"]
-        for pen in tmp_pen:
-            tmp_tab.loc[:, "penalty"] = pen
-            table = pd.concat([table, tmp_tab])
-        table = table[table["penalty"] != "None"]
+        penalty_list = table["penalty"].unique()
+        to_add = []
+        for penalty in penalty_list:
+            if penalty != "None":
+                tmp = table.loc[table["penalty"] == "None"].copy()
+                tmp["penalty"] = penalty
+                to_add.append(tmp)
+        table = table.drop(table[table["penalty"] == "None"].index, axis=0)
+        table = pd.concat([table] + to_add, axis=0)
 
     datasets = np.unique(table["run"])
     table["name"] = table.apply(lambda row: new_name(row["AM"], row["kernel"]), axis=1)
@@ -147,7 +148,8 @@ def add_2d_plot(
     err = 1.96 * std_y / (n_samples) ** 0.5
     curve_name = name_mapping_fdr(name, kernel)
     if log_scale:
-        x = np.log(x)
+        x_min_not_0 = min([el for el in x if el != 0])
+        x = np.log([el if el != 0 else x_min_not_0 / 10 for el in x])
     if legendrule == "once":
         showlegend = legend[curve_name]
     else:
@@ -219,7 +221,8 @@ def compute_z_selected(data, fn, var, list_var, logscale=True):
     )
     x = avg[list_var[0]].unique()
     if logscale:
-        x = np.log(x)
+        x_min_not_0 = min([el for el in x if el != 0])
+        x = np.log([el if el != 0 else x_min_not_0 / 10 for el in x])
     y = avg[list_var[1]].unique()
     return z, x, y
 
