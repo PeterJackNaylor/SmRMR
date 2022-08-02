@@ -14,7 +14,7 @@ process lambda_control {
     conda { AM == 'PC' ? '/data/ghighdim/pnaylor/project/dclasso/env_GPU/' : '/data/ghighdim/pnaylor/project/dclasso/env/'}
     clusterOptions { task.attempt <= 1 ? (AM == 'PC' ? '-jc gpu-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0': '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH') : (AM == 'PC' ? '-jc gs-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0' : 'fail') }
     beforeScript { AM = 'PC' ? 'export LD_LIBRARY_PATH=/data/ghighdim/pnaylor/project/dclasso/env_GPU/lib/:$LD_LIBRARY_PATH' : ''}
-    tag "${PARAMS},${AM},${KERNEL}"
+    tag "${TAG},${AM},${KERNEL}"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
         each AM
@@ -24,7 +24,7 @@ process lambda_control {
         path "performance.tsv"
 
     when:
-        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL)) && ((LAMBDA == FIRST_LAMBDA) || (PENALTY != "none"))
+        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL))
 
     script:
         template "lambda_control/main.py"
