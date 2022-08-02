@@ -1,5 +1,5 @@
 nextflow.enable.dsl = 2
-
+CWD = System.getProperty("user.dir")
 // Parameters
 /////////////////////////////////////////////////////////
 repeats = 0..(params.repeat-1)
@@ -17,9 +17,7 @@ process lambda_control {
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
         each AM
         each KERNEL
-        each PENALTY
-        each OPTIMIZER
-        each LAMBDA
+        val PARAMS_FILE
     output:
         path "performance.tsv"
 
@@ -38,11 +36,14 @@ process plot {
         path FILE
 
     output:
-        tuple path(FILE), path("loss_train"), path("loss_validation"), path("alpha_fdr"), path("selected_features"), path("R_constraint")
+        tuple path(FILE), path("loss_train"), path("loss_validation"), path("alpha_fdr"), path("fdr_control_isoline"), path("selected_features"), path("R_constraint")
 
     script:
         template "lambda_control/plot.py"
 }
+
+
+config = CWD + "/" + params.config_path
 
 
 workflow simulation {
@@ -73,6 +74,6 @@ workflow {
             params.num_features, params.repeat
         )
 
-        lambda_control(simulation.out, params.measure_stat, params.kernel, params.penalty, params.optimizer, params.lambda)
+        lambda_control(simulation.out, params.measure_stat, params.kernel, config)
         plot(lambda_control.out.collectFile(skip: 1, keepHeader: true))
 }

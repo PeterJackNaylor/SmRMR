@@ -1,4 +1,5 @@
 out: results/lambda_control
+config_path: results/lambda_control/test.yaml
 repeat: 2
 num_samples: [100]
 num_features: [100, 500, 5000]

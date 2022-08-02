@@ -14,9 +14,7 @@ mode = params.mode
 //model_algorithms = ['random_forest'] // 'logistic_regression', 'random_forest', 'svc', 'knn'
 // performance_metrics = ['tpr_fpr', 'features_tpr_fpr'] //'auc_roc',
 
-include { simulate_data; simulate_data as validation_data} from './nf_core/data_simulation.nf'
-FORCE = 1
-include { simulate_data as test_data } from './nf_core/data_simulation.nf'
+include { simulate_data; simulate_data as validation_data; simulate_data as test_data} from './nf_core/data_simulation.nf'
 
 process dclasso {
     tag "model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"
