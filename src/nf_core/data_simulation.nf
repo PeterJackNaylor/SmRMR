@@ -6,22 +6,18 @@ process simulate_data {
 
     input:
         each SIMULATION
-        each NUM_SAMPLES
-        each NUM_FEATURES
+        each N_P
         each REPEATS
-        val FORCE
         val PREFIX
     output:
         tuple val("${SIMULATION}(${NUM_SAMPLES},${NUM_FEATURES}"), path("simulation${PREFIX}.npz"), path("causal${PREFIX}.npz")
 
-    when:
-        ((NUM_SAMPLES < NUM_FEATURES + 1) || ((NUM_SAMPLES == 500) && (NUM_FEATURES == 100))) || (FORCE == 1)
-
     script:
+        NUM_SAMPLES = N_P[0]
+        NUM_FEATURES = N_P[1]
         template "simulation/${SIMULATION}.py"
 
 }
-
 
 process split_data {
 
@@ -41,12 +37,11 @@ process split_data {
 }
 
 
-
 workflow simulation {
     main:
-        simulate_data(params.simulation_models, params.num_samples, params.num_features, 1..params.repeat, 0, "")
-        validation_data(params.simulation_models, params.validation_samples, params.num_features, 1, 0, "_val")
-        test_data(params.simulation_models, params.test_samples, params.num_features, 1, 1, "_test")
+        simulate_data(params.simulation_models, params.simulation_np, 1..params.repeat, "")
+        validation_data(params.simulation_models, params.validation_samples, 1, "_val")
+        test_data(params.simulation_models, [params.test_samples], params.num_features, 1, "_test")
 
         simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
                     .set{ train_split }

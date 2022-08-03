@@ -1,7 +1,7 @@
 out: results/screening
 repeat: 20
-num_samples: [100, 500]
-num_features: [100, 500]
+simulation_np: [[100, 100], [100, 500], [100, 5000], [500, 100], [500, 500], [500, 5000], [1000, 5000]]
+validation_samples: [[100, 100], [100, 500], [100, 5000]]
 measure_stat:
 - "DC"
 - "HSIC"

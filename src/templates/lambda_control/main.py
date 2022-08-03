@@ -26,7 +26,8 @@ except ImportError:
 
 from dclasso import DCLasso, pic_penalty
 from dclasso.dc_lasso import alpha_threshold, loss, minimize_loss
-from dclasso.utils import get_equi_features
+
+# from dclasso.utils import get_equi_features
 import utils as u
 
 key = random.PRNGKey(42)
@@ -104,7 +105,7 @@ def perform_optimisation_with_parameters(
         Dxx=dclasso_main.Dxx_val,
         penalty_func=pic_penalty(penalty_kwargs),
     )
-    loss_valid = float(loss_fn(beta))
+    loss_valid = float(loss_fn(beta[:d]))
     if pen != "None":
         R = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(beta))
     else:
@@ -206,8 +207,8 @@ N1__ = np.abs(dl.beta_).sum()
 # Compute validation loss, but only compute X_val, Xhat and Dxx/Dxy once
 d = len(dl.screen_indices_)
 X_val = X_val[:, dl.screen_indices_]
-Xhat = get_equi_features(X_val, key)
-X_val = jnp.concatenate([X_val, Xhat], axis=1)
+# Xhat = get_equi_features(X_val, key)
+# X_val = jnp.concatenate([X_val, Xhat], axis=1)
 y_val = jnp.array(y_val)
 Dxy_val = dl._compute_assoc(X_val, y_val, **dl.ms_kwargs)
 Dxx_val = dl._compute_assoc(X_val, **dl.ms_kwargs)
@@ -218,7 +219,7 @@ dl.Dxx_val = Dxx_val
 loss_fn = partial(
     loss, Dxy=Dxy_val, Dxx=Dxx_val, penalty_func=pic_penalty(penalty_kwargs)
 )
-loss_valid__ = float(loss_fn(dl.beta_))
+loss_valid__ = float(loss_fn(dl.beta_[:d]))
 
 fdr__, selected__ = perform_alpha_computations(
     alpha_list[1:], dl.wjs_, dl.screen_indices_, causal_feats

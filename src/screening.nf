@@ -41,7 +41,8 @@ process plot {
 
 workflow {
     main:
-        simulate_data(params.simulation_models, params.num_samples, params.num_features, repeats, 0, "")
+
+        simulate_data(params.simulation_models, train_pairs_np, repeats, "")
         screen(simulate_data.out, params.measure_stat, params.kernel)
         plot(screen.out.collectFile(skip: 1, keepHeader: true))
 }
