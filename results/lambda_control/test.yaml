@@ -5,6 +5,7 @@ simulation_np: [[100, 100], [100, 500], [500, 100]]
 validation_samples: [[100, 100], [100, 500]]
 measure_stat:
 - "HSIC"
+- "PC"
 kernel: ["laplacian", "tanh"]
 penalty: ["l1", "None"]
 optimizer: ["adam"]
