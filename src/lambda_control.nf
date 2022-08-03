@@ -7,7 +7,7 @@ repeats = 0..(params.repeat-1)
 KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
 
-include { simulate_data; simulate_data as validation_data} from './nf_core/data_simulation.nf'
+include { simulate_data; simulate_data as sim_validation} from './nf_core/data_simulation.nf'
 
 
 process lambda_control {
@@ -49,17 +49,16 @@ config = CWD + "/" + params.config_path
 workflow simulation {
     take:
         simulation_models
-        num_samples
-        validation_samples
-        num_features
+        train_pairs_np
+        validation_pairs_np
         repeat
     main:
-        simulate_data(simulation_models, num_samples, num_features, 1..repeat, 0, "")
-        validation_data(simulation_models, validation_samples, num_features, 1, 0, "_val")
+        simulate_data(simulation_models, train_pairs_np, 1..repeat,  "")
+        sim_validation(simulation_models, validation_pairs_np, 1, "_val")
 
         simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
                     .set{ train_split }
-        validation_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
+        sim_validation.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
                     .set{ validation_split }
         train_split .combine(validation_split, by: 0) .set{ data }
     emit:
@@ -70,8 +69,8 @@ workflow simulation {
 workflow {
     main:
         simulation(
-            params.simulation_models, params.num_samples, params.validation_samples,
-            params.num_features, params.repeat
+            params.simulation_models, params.simulation_np,
+            params.validation_samples, params.repeat
         )
 
         lambda_control(simulation.out, params.measure_stat, params.kernel, config)
