@@ -8,12 +8,12 @@ def alpha2_table(table):
     one_alpha = table.alpha.unique()[0]
     one_penalty = table.penalty.unique()[0]
     one_optimizer = table.optimizer.unique()[0]
-    one_lambda = table["lambda"].unique()[0]
+    one_lambda = table.lamb.unique()[0]
     tmp_alpha2 = tmp_alpha2[
         (tmp_alpha2.alpha == one_alpha)
         & (tmp_alpha2.penalty == one_penalty)
         & (tmp_alpha2.optimizer == one_optimizer)
-        & (tmp_alpha2["lambda"] == one_lambda)
+        & (tmp_alpha2.lamb == one_lambda)
     ]
     tmp_alpha2 = tmp_alpha2.reset_index()
     tmp_alpha2["data_name"] = tmp_alpha2.apply(
