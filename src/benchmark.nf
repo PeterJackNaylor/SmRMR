@@ -2,19 +2,8 @@ nextflow.enable.dsl = 2
 
 // Parameters
 /////////////////////////////////////////////////////////
-params.out = '.'
-params.splits = 5
-params.mode = "regression"
 
-config = params.config_path
-mode = params.mode
-
-// simulation_models = ['linear_0']
-// feature_selection_algorithms = ["dclasso"] //'all_features', "hsic_lasso"
-//model_algorithms = ['random_forest'] // 'logistic_regression', 'random_forest', 'svc', 'knn'
-// performance_metrics = ['tpr_fpr', 'features_tpr_fpr'] //'auc_roc',
-
-include { simulate_data; simulate_data as validation_data; simulate_data as test_data} from './nf_core/data_simulation.nf'
+include { simulation_train_validation_test } from './nf_core/data_workflows.nf'
 
 process dclasso {
     tag "model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"
@@ -120,29 +109,6 @@ process plot {
 
 }
 
-workflow simulation {
-        simulation_models
-        num_samples
-        validation_samples
-        test_samples
-        num_features
-        repeat
-    main:
-        simulate_data(simulation_models, num_samples, num_features, 1..repeat, 0, "")
-        validation_data(simulation_models, validation_samples, num_features, 1, 0, "_val")
-        test_data(simulation_models, test_samples, num_features, 1, 1, "_test")
-
-        simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
-                    .set{ train_split }
-        validation_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
-                    .set{ validation_split }
-        test_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
-                    .set{ test_split }
-        train_split .combine(validation_split, by: 0) .combine(test_split, by: 0) .set{ data }
-    emit:
-        data
-}
-
 workflow models {
     take:
         data
@@ -172,9 +138,9 @@ workflow models {
 
 workflow {
     main:
-        simulation(
-            params.simulation_models, params.num_samples, params.validation_samples,
-            params.test_samples, params.num_features, params.repeat
+        simulation_train_validation_test(
+            params.simulation_models, params.simulation_np, params.validation_samples,
+            params.test_samples, params.repeat
         )
         models(
             simulation.out, params.feature_selection, params.prediction, params.penalty,

@@ -10,17 +10,27 @@ def precompute_kernels(X, Y=None, kernel="gaussian", sigma=None, center_kernel=T
     return Kx
 
 
-def get_kernel_function(name, nfeats=1):
+def get_kernel_function(name, nfeats=1, alpha=1.0, beta=1.0, gamma=1.0):
     """
     Get the correct kernel function given the name.
     For the gaussian kernel nfeats designates sigma.
+    alpha designates added constants, gamma designates
+    scaling factors and beta designates the exponent.
     Parameters
     ----------
     name: string, could be gaussian, linear or distance.
 
     nfeats: None or scalar, if None, it is set as the median
         of the distance matrix of the input, otherwise it is
-        set as sqrt(nfeats)
+        set as sqrt(nfeats). Parameter of the gaussian and
+        laplacian kernels.
+    alpha: Scalar, parameter of the tanh, inverse-M and sigmoid kernel.
+        In all it represents an added constant before application of the
+        final function.
+    beta: Scalar, parameter of the alpha and inverse-M kernel. Corresponds
+        to applying the beta-th power in the function.
+    gamma: Scalar, parameter of the tanh and sigmoid kernel. Scaling
+        value applied to the cross product.
 
     Returns
     -------
@@ -30,27 +40,24 @@ def get_kernel_function(name, nfeats=1):
     kernel_params = {}
     match name:
         case "gaussian":
+            kernel_params = {"sigma": np.sqrt(nfeats) if nfeats else None}
             kernel = kernel_gaussian
-            if nfeats is not None:
-                kernel_params = {"sigma": np.sqrt(nfeats)}
-            else:
-                kernel_params = {"sigma": None}
         case "laplacian":
+            kernel_params = {"sigma": np.sqrt(nfeats) if nfeats else None}
             kernel = kernel_laplacian
-            if nfeats is not None:
-                kernel_params = {"sigma": np.sqrt(nfeats)}
-            else:
-                kernel_params = {"sigma": None}
         case "tanh":
+            kernel_params = {"alpha": alpha, "gamma": gamma}
             kernel = kernel_tanh
         case "inverse-M":
+            kernel_params = {"alpha": alpha, "beta": beta}
             kernel = kernel_inverse_M
         case "linear":
             kernel = kernel_linear
         case "distance":
+            kernel_params = {"beta": beta}
             kernel = kernel_alpha
-            kernel_params = {"alpha": 1.0}
         case "sigmoid":
+            kernel_params = {"alpha": alpha, "gamma": gamma}
             kernel = kernel_sigmoid
         case _:
             raise ValueError("No valid kernel.")
@@ -160,8 +167,8 @@ def kernel_laplacian(x1, x2=None, sigma=None):
     """
     dist_1 = compute_l1_distance_matrix(x1, x2)
     if sigma is None:
-        sigma = np.sqrt(np.var(dist_1))
-    K = np.exp(dist_1 / sigma)
+        sigma = np.var(dist_1) ** (1 / 4)
+    K = np.exp(-dist_1 / sigma)
 
     return K
 
@@ -189,7 +196,7 @@ def kernel_linear(x1, x2=None):
     return result
 
 
-def kernel_tanh(x1, x2=None, d=1.0, alpha=1.0):
+def kernel_tanh(x1, x2=None, gamma=1.0, alpha=1.0):
     """
     Computes the distance matrix with the tanh kernel.
     If x2 isn't given, it will set x2 as x1 and compute
@@ -206,7 +213,7 @@ def kernel_tanh(x1, x2=None, d=1.0, alpha=1.0):
     The tanh kernel of the distance matrix of x1 and x2.
     """
 
-    result = np.tanh(kernel_linear(x1, x2) / d + alpha)
+    result = np.tanh(kernel_linear(x1, x2) * gamma + alpha)
     return result
 
 
@@ -236,12 +243,12 @@ def kernel_inverse_M(x1, x2=None, alpha=1.0, beta=1.0):
     return result
 
 
-def kernel_alpha(x1, x2=None, alpha=None):
+def kernel_alpha(x1, x2=None, beta=1.0):
     """
     Computes the distance matrix with the distance alpha kernel.
     If x2 isn't given, it will set x2 as x1 and compute
     the inner distance matrix of x1.
-    If alpha isn't set, it's default value is 1.
+    If beta isn't set, it's default value is 1.
     Parameters
     ----------
     x1: numpy array like object with one feature where the rows
@@ -257,22 +264,20 @@ def kernel_alpha(x1, x2=None, alpha=None):
     The distance alpha kernel of the distance matrix of x1 and x2.
     """
     x1 = check_vector(x1)
-    x1_alpha = np.power(np.abs(x1), alpha)
+    x1_alpha = np.power(np.abs(x1), beta)
 
     x2 = x1 if x2 is None else check_vector(x2)
-    x2_alpha = np.power(np.abs(x2), alpha)
+    x2_alpha = np.power(np.abs(x2), beta)
 
-    result = 0.5 * (x1_alpha + x2_alpha.T - np.power(np.abs(x2.T - x1), alpha))
+    result = 0.5 * (x1_alpha + x2_alpha.T - np.power(np.abs(x2.T - x1), beta))
     return result
 
 
-def kernel_sigmoid(x1, x2=None, gamma=None, coeff0=1):
+def kernel_sigmoid(x1, x2=None, gamma=None, alpha=1.0):
 
-    x1 = check_vector(x1)
-    x2 = x1 if x2 is None else check_vector(x2)
     gamma = 1.0 / len(x1) if gamma is None else gamma
 
-    x = gamma * np.dot(x1, x2.T) + coeff0
+    x = gamma * kernel_linear(x1, x2) + alpha
 
     return 1 / (1 + np.exp(-x))
 
