@@ -176,7 +176,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
         mode: str = "competitive",
-        init="from_convex_solve",
+        init: str = "from_convex_solve",
+        minimize_val_loss: bool = False,
         evaluate_function: Callable[
             [npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike], float
         ] = None,
@@ -217,6 +218,10 @@ class DCLasso(BaseEstimator, TransformerMixin):
             Dxy = self._compute_assoc(Xs, y2, **self.ms_kwargs)
             Dxx = self._compute_assoc(Xs, **self.ms_kwargs)
 
+            if minimize_val_loss:
+                Dxy_val = self._compute_assoc(X_val, y_val, **self.ms_kwargs)
+                Dxx_val = self._compute_assoc(X_val, **self.ms_kwargs)
+
             for hyper in hyperparameter_generator:
                 if self.verbose:
                     print(hyper)
@@ -247,9 +252,24 @@ class DCLasso(BaseEstimator, TransformerMixin):
                     + f"{penalty_kwargs['lamb']}_lr={opt_kwargs['init_value']}"
                 )
                 if nout:
-                    score = evaluate_function(
-                        X2[:, selected_features], y2, X_val[:, selected_features], y_val
-                    )
+                    if minimize_val_loss:
+                        loss_val = partial(
+                            loss,
+                            Dxy=Dxy_val,
+                            Dxx=Dxx_val,
+                            penalty_func=pic_penalty(penalty_kwargs),
+                        )
+                        score = float(loss_val(beta))
+                    elif evaluate_function:
+                        score = evaluate_function(
+                            X2[:, selected_features],
+                            y2,
+                            X_val[:, selected_features],
+                            y_val,
+                        )
+                    else:
+                        raise NotImplementedError("No valid way of cross-validating")
+
                     dict_scores[name] = (score, selected_features)
                     if score < best_score:
                         best_score = score

@@ -116,3 +116,12 @@ def sanitize_vector(x: npt.ArrayLike):
         x = x.flatten()
 
     return x
+
+
+def determine_mode(name: str):
+    if "categorical" in name:
+        return "classification"
+    elif "linear" or "nonlinear" in name:
+        return "regression"
+    else:
+        raise ValueError(f"Unknown model name: {name}")

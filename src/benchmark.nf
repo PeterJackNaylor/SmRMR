@@ -21,10 +21,10 @@ process dclasso {
         (AM == "HSIC") || (KERNEL == "linear")
 
     script:
-        template "feature_selection_and_classification/DCLasso_simulations.py"
+        template "feature_selection_and_score/DCLasso_simulations.py"
 }
 
-process feature_selection_and_classification {
+process feature_selection_and_score {
     tag "model=${MODEL.name};data=${TAG})"
     input:
         each MODEL
@@ -35,7 +35,7 @@ process feature_selection_and_classification {
         tuple val("model=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     script:
-        template "feature_selection_and_classification/${MODEL.name}.py"
+        template "feature_selection_and_score/${MODEL.name}.py"
 }
 
 process feature_selection {
