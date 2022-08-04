@@ -6,7 +6,7 @@ validation_samples: [[100, 100], [100, 500]]
 measure_stat:
 - "HSIC"
 - "PC"
-kernel: ["laplacian", "tanh"]
+kernel: ["linear", "tanh"]
 penalty: ["l1", "None"]
 optimizer: ["adam"]
 lambda: [0.001, 0.1]

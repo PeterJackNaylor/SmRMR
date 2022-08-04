@@ -22,6 +22,7 @@ from utils_plot import (
     # decorate_3d_mult_and_save,
     decorate_multi_and_save,
 )
+from nice_tables import alpha2_table
 
 
 def identity(x):
@@ -290,6 +291,10 @@ def main():
                 if_none_0,
                 log_scale=True,
             )
+
+    # alpha 2 check, alpha 2 depends only on the measure, kernel and data
+    alpha2_values = alpha2_table(table)
+    alpha2_values.to_csv("alpha2_values.csv")
 
 
 if __name__ == "__main__":

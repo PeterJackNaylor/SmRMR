@@ -7,7 +7,7 @@ repeats = 0..(params.repeat-1)
 KERNEL_AM = ["HSIC"]
 FIRST_KERNEL = params.kernel[0]
 
-include { simulate_data; simulate_data as sim_validation} from './nf_core/data_simulation.nf'
+include { simulation_train_validation } from './nf_core/data_workflows.nf'
 
 
 process lambda_control {
@@ -48,33 +48,13 @@ process plot {
 config = CWD + "/" + params.config_path
 
 
-workflow simulation {
-    take:
-        simulation_models
-        train_pairs_np
-        validation_pairs_np
-        repeat
-    main:
-        simulate_data(simulation_models, train_pairs_np, 1..repeat,  "")
-        sim_validation(simulation_models, validation_pairs_np, 1, "_val")
-
-        simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
-                    .set{ train_split }
-        sim_validation.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
-                    .set{ validation_split }
-        train_split .combine(validation_split, by: 0) .set{ data }
-    emit:
-        data
-}
-
-
 workflow {
     main:
-        simulation(
+        simulation_train_validation(
             params.simulation_models, params.simulation_np,
             params.validation_samples, params.repeat
         )
 
-        lambda_control(simulation.out, params.measure_stat, params.kernel, config)
+        lambda_control(simulation_train_validation.out, params.measure_stat, params.kernel, config)
         plot(lambda_control.out.collectFile(skip: 1, keepHeader: true))
 }

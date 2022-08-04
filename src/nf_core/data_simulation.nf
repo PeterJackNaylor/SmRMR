@@ -35,21 +35,3 @@ process split_data {
         template 'data/kfold.py'
 
 }
-
-
-workflow simulation {
-    main:
-        simulate_data(params.simulation_models, params.simulation_np, 1..params.repeat, "")
-        validation_data(params.simulation_models, params.validation_samples, 1, "_val")
-        test_data(params.simulation_models, [params.test_samples], params.num_features, 1, "_test")
-
-        simulate_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[0], it[1], it[2]]}
-                    .set{ train_split }
-        validation_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
-                    .set{ validation_split }
-        test_data.out.map{ it -> [[it[0].split('\\(')[0], it[0].split(',')[1]], it[1]]}
-                    .set{ test_split }
-        train_split .combine(validation_split, by: 0) .combine(test_split, by: 0) .set{ data }
-    emit:
-        data
-}
