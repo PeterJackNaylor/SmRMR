@@ -16,12 +16,13 @@ Output files:
 from sklearn.linear_model import Lars
 
 from base.sklearn import SklearnModel
+import utils as u
 
 
 class LarsModel(SklearnModel):
     def __init__(self) -> None:
         lars = Lars()
-        super().__init__(lars, "lars")
+        super().__init__(lars, "regression", "prediction", "lars")
 
     def score_features(self):
         return self.clf.best_estimator_.coef_
@@ -32,5 +33,8 @@ class LarsModel(SklearnModel):
 
 if __name__ == "__main__":
     model = LarsModel()
-    model.train("${TRAIN_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}")
+    model.train_validate(
+        "${TRAIN_NPZ}", "${VAL_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}"
+    )
+    u.save_proba_npz(u.np.zeros(0), model.best_hyperparams)
     model.predict("${TEST_NPZ}", "${SCORES_NPZ}")

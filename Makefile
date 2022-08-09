@@ -21,15 +21,11 @@ docker_build: Dockerfile
 screening:
 	$(CONDA_ACTIVATE); nextflow src/screening.nf $(PROFILE) -params-file results/screening/$${FILENAME} -resume
 
-fdr_control:
-	$(CONDA_ACTIVATE); nextflow src/fdr_control.nf $(PROFILE) -params-file results/fdr_control/$${FILENAME} -resume
-
 lambda_control:
 	$(CONDA_ACTIVATE); nextflow src/lambda_control.nf $(PROFILE) -params-file results/lambda_control/$${FILENAME} -resume
 
 benchmark: results/benchmark/config.yaml
-	$(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/classification_config.yaml -resume
-	# $(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/config_small.yaml -resume
+	$(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/$${FILENAME} -resume
 
 test:
 	$(CONDA_ACTIVATE); pytest test

@@ -10,7 +10,7 @@ def precompute_kernels(X, Y=None, kernel="gaussian", sigma=None, center_kernel=T
     return Kx
 
 
-def get_kernel_function(name, nfeats=1, alpha=1.0, beta=1.0, gamma=1.0):
+def get_kernel_function(name, nfeats=1, alpha=1.0, beta=0.9, gamma=1.0):
     """
     Get the correct kernel function given the name.
     For the gaussian kernel nfeats designates sigma.
@@ -217,7 +217,7 @@ def kernel_tanh(x1, x2=None, gamma=1.0, alpha=1.0):
     return result
 
 
-def kernel_inverse_M(x1, x2=None, alpha=1.0, beta=1.0):
+def kernel_inverse_M(x1, x2=None, alpha=1.0, beta=0.8):
     """
     Computes the distance matrix with the inverse-M kernel.
     If x2 isn't given, it will set x2 as x1 and compute

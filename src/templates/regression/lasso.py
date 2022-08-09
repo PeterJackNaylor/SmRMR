@@ -16,12 +16,13 @@ Output files:
 from sklearn.linear_model import Lasso
 
 from base.sklearn import SklearnModel
+import utils as u
 
 
 class LassoModel(SklearnModel):
     def __init__(self) -> None:
         lasso = Lasso()
-        super().__init__(lasso, "lasso")
+        super().__init__(lasso, "regression", "prediction", "lasso")
 
     def score_features(self):
         return self.clf.best_estimator_.coef_
@@ -32,5 +33,8 @@ class LassoModel(SklearnModel):
 
 if __name__ == "__main__":
     model = LassoModel()
-    model.train("${TRAIN_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}")
+    model.train_validate(
+        "${TRAIN_NPZ}", "${VAL_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}"
+    )
+    u.save_proba_npz(u.np.zeros(0), model.best_hyperparams)
     model.predict("${TEST_NPZ}", "${SCORES_NPZ}")

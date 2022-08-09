@@ -13,18 +13,19 @@ class SklearnModel:
         self.type = model_type
         self.config_name = config_name
         self.name = name
-        if self.type == "categorical":
-            self.scoring = "auc_roc"
+        if self.type == "classification":
+            self.scoring = "accuracy"
         else:
             self.scoring = "neg_mean_squared_error"
 
     def train(self, train_npz, scores_npz, params_file):
 
         X, y, featnames = u.read_data(train_npz, scores_npz)
+        featnames = np.squeeze(featnames)
         X = X[:, featnames]
         param_grid = u.read_parameters(params_file, self.config_name, self.name)
 
-        self.clf = GridSearchCV(self.model, param_grid, scoring="roc_auc")
+        self.clf = GridSearchCV(self.model, param_grid, scoring=self.scoring)
         self.clf.fit(X, y)
 
         self.best_hyperparams = {k: self.clf.best_params_[k] for k in param_grid.keys()}
@@ -39,6 +40,8 @@ class SklearnModel:
     def train_validate(self, train_npz, val_npz, scores_npz, params_file):
 
         X, y, featnames, selected = u.read_data(train_npz, scores_npz)
+        self.model_input_features = selected
+        featnames = np.squeeze(featnames)
         X_val, y_val, _, _ = u.read_data(val_npz, scores_npz)
         X = X[:, selected]
         X_val = X_val[:, selected]
@@ -58,26 +61,37 @@ class SklearnModel:
         scores = self.score_features()
         scores = u.sanitize_vector(scores)
         self_selected = self.select_features(scores)
+
         featnames = featnames[self_selected]
         selected_feats = np.zeros(shape=(selected.shape[0],), dtype=bool)
+
         if list(featnames):
             selected_feats[np.array(featnames)] = True
         self.select_features = selected_feats
-        u.save_scores_npz(featnames, selected_feats, scores, self.best_hyperparams)
-        u.save_scores_tsv(featnames, selected_feats, scores, self.best_hyperparams)
+
+        u.update_save_scores_npz(
+            featnames,
+            selected_feats,
+            scores,
+            self.best_hyperparams,
+            scores_npz,
+            "new_scores.npz",
+        )
+        # u.save_scores_npz(featnames, selected_feats, scores, self.best_hyperparams)
+        # u.save_scores_tsv(featnames, selected_feats, scores, self.best_hyperparams)
 
     def predict_proba(self, test_npz, scores_npz):
 
         X_test, _, _, _ = u.read_data(test_npz, scores_npz)
 
-        y_proba = self.clf.predict_proba(X_test[:, self.select_features])
+        y_proba = self.clf.predict_proba(X_test[:, self.model_input_features])
         u.save_proba_npz(y_proba, self.best_hyperparams)
 
     def predict(self, test_npz, scores_npz):
 
         X_test, _, _, _ = u.read_data(test_npz, scores_npz)
 
-        y_pred = self.clf.predict(X_test[:, self.select_features])
+        y_pred = self.clf.predict(X_test[:, self.model_input_features])
         u.save_preds_npz(y_pred, self.best_hyperparams)
 
     @abstractmethod

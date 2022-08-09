@@ -54,7 +54,7 @@ workflow simulation_train_validation_test {
         sim_validation(simulation_models, test_pairs_np, 1, "_test") .set{ sim_test }
         prep_channel_others(sim_test).set{ test_split }
 
-        simulation_train_validation .combine(test_split, by: 0) .set{ data }
+        simulation_train_validation.out .combine(test_split, by: 0) .set{ data }
     emit:
         data
 }

@@ -14,55 +14,73 @@ Output files:
   - scores.tsv: like scores.npz, but in tsv format
 """
 import numpy as np
-import subprocess
+import pandas as pd
+import itertools
 
+import pymrmr
 import utils as u
 
 # Prepare data
 ############################
-X, y, featnames = u.read_data("${TRAIN_NPZ}")
+X, y, featnames, selected = u.read_data("${TRAIN_NPZ}")
+featnames = [str(el) for el in list(featnames)]
+X = pd.DataFrame(X, columns=featnames)
 ds = np.hstack((np.expand_dims(y, axis=1), X))
-cols = "y," + ",".join(featnames)
+X_val, y_val, _, _ = u.read_data("${VAL_NPZ}")
+X_val = pd.DataFrame(X_val, columns=featnames)
 
-np.savetxt("dataset.csv", ds, header=cols, fmt="%1.3f", delimiter=",", comments="")
-discretization = "-t 0" if "${MODE}" == "regression" else ""
+test_data = np.load("${TEST_NPZ}")
+
+X_test = test_data["X"]
+
+mode = u.determine_mode("${TAG}")
 
 # Run mRMR
 ############################
 samples, features = X.shape
 param_grid = u.read_parameters("${PARAMS_FILE}", "feature_selection", "mrmr")
 
-out = subprocess.check_output(
-    [
-        "mrmr",
-        "-i",
-        "dataset.csv",
-        discretization,
-        "-n",
-        param_grid["num_features"],
-        "-s",
-        str(samples),
-        "-v",
-        str(features),
-    ]
-)
+criteria = param_grid["criteria"]
+num_feat = param_grid["num_features"]
+
+max_score = np.inf
+model = None
+best_hyperparameter = None
+best_feats = None
+list_hyperparameter = list(itertools.product(criteria, num_feat))
+
+for hp in list_hyperparameter:
+    selected_feat = pymrmr.mRMR(X, hp[0], hp[1])
+
+    X_tmp = X[selected_feat]
+    X_val_tmp = X_val[selected_feat]
+    val_score = u.evaluate_function(X_tmp, y, X_val_tmp, y_val, mode)
+    if val_score < max_score:
+        best_model = model
+        best_hyperparameter = hp
+        max_score = val_score
+        best_feats = selected_feat
+
 
 # Get selected features
 ############################
-flag = False
-selected = []
-for line in out.decode("ascii").split("\\n"):
-    if flag and "Name" not in line:
-        if not line:
-            flag = False
-        else:
-            f = line.split("\\t")[2].strip()
-            selected.append(int(f))
-    elif "mRMR features" in line:
-        flag = True
+best_feats = np.array([int(el) for el in best_feats])
 
-scores = [0 for _ in selected]
-selected = np.array(selected)
+hp_dic = {
+    "critera": hp[0],
+    "num_feats": hp[1],
+}
 
-u.save_scores_npz(featnames, selected, scores, param_grid)
-u.save_scores_tsv(featnames, selected, scores, param_grid)
+selected_feat = np.zeros_like(featnames, dtype="bool")
+selected_feat[best_feats] = True
+scores = np.zeros_like(featnames, dtype="float")
+u.save_scores_npz(
+    best_feats, selected_feat, scores, hp_dic, name="scores_feature_selection_mrmr.npz"
+)
+
+
+with open("scored.mrmr.tsv", "a") as f:
+    for key, item in hp_dic.items():
+        f.write(f"# {key}: {item}\\n")
+
+    pd.DataFrame({"features": best_feats}).to_csv(f, sep="\\t", index=False)

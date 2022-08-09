@@ -30,4 +30,5 @@ dependencies:
   - pip:
     - jax[cpu]
     - kaleido
+    - lightgbm
   # - seaborn

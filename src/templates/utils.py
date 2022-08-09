@@ -8,6 +8,9 @@ import pandas as pd
 import yaml
 from scipy.sparse import load_npz
 
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import mean_squared_error, accuracy_score
+
 
 # Input functions
 ###########################
@@ -51,6 +54,32 @@ def read_parameters(params_yaml: str, algo_type: str, algo_name: str) -> dict:
 
 # Output functions
 ##########################
+def update_save_scores_npz(
+    featnames: npt.ArrayLike,
+    selected: npt.ArrayLike,
+    scores: npt.ArrayLike = None,
+    hyperparams: dict = None,
+    name: str = "scores.npz",
+    new_name: str = "scores_new.npz",
+):
+    old_scores_file = np.load(name, allow_pickle=True)
+    old_featnames = old_scores_file["featnames"]
+    old_scores = old_scores_file["scores"]
+    old_selected = old_scores_file["selected"]
+    old_hyperparams = old_scores_file["hyperparams"]
+    np.savez(
+        new_name,
+        featnames=featnames,
+        scores=sanitize_vector(scores),
+        selected=sanitize_vector(selected),
+        hyperparams=hyperparams,
+        old_featnames=old_featnames,
+        old_scores=old_scores,
+        old_selected=old_selected,
+        old_hyperparams=old_hyperparams,
+    )
+
+
 def save_scores_npz(
     featnames: npt.ArrayLike,
     selected: npt.ArrayLike,
@@ -118,10 +147,30 @@ def sanitize_vector(x: npt.ArrayLike):
     return x
 
 
+def minus_accuracy_score(y, yhat):
+    return 1 - accuracy_score(y, yhat)
+
+
 def determine_mode(name: str):
     if "categorical" in name:
         return "classification"
-    elif "linear" or "nonlinear" in name:
+    elif "linear" in name:
         return "regression"
     else:
         raise ValueError(f"Unknown model name: {name}")
+
+
+def model_eval(mode):
+    if mode == "classification":
+        model = LogisticRegression()
+        eval_func = minus_accuracy_score
+    else:
+        model = LinearRegression()
+        eval_func = mean_squared_error
+    return model, eval_func
+
+
+def evaluate_function(X, y, X_val, y_val, mode="classification"):
+    model, eval_func = model_eval(mode)
+    model.fit(X, y)
+    return eval_func(model.predict(X_val), y_val)

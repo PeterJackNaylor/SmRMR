@@ -87,7 +87,7 @@ def perform_optimisation_with_parameters(
         dclasso_main.Dxy,
         opt_kwargs,
     )
-    beta, loss_train = minimize_loss(
+    beta, _ = minimize_loss(
         step_function,
         opt_state,
         beta,
@@ -99,11 +99,20 @@ def perform_optimisation_with_parameters(
     fdr_l, selected_l = perform_alpha_computations(
         alpha_list, wjs, dclasso_main.screen_indices_, causal_features
     )
+
+    loss_fn = partial(
+        loss,
+        Dxy=dclasso_main.Dxy,
+        Dxx=dclasso_main.Dxx,
+        penalty_func=pic_penalty("None"),
+    )
+
+    loss_train = float(loss_fn(beta))
     loss_fn = partial(
         loss,
         Dxy=dclasso_main.Dxy_val,
         Dxx=dclasso_main.Dxx_val,
-        penalty_func=pic_penalty(penalty_kwargs),
+        penalty_func=pic_penalty("None"),
     )
     loss_valid = float(loss_fn(beta[:d]))
     if pen != "None":

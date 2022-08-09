@@ -1,4 +1,5 @@
 nextflow.enable.dsl = 2
+CWD = System.getProperty("user.dir")
 
 // Parameters
 /////////////////////////////////////////////////////////
@@ -21,10 +22,10 @@ process dclasso {
         (AM == "HSIC") || (KERNEL == "linear")
 
     script:
-        template "feature_selection_and_score/DCLasso_simulations.py"
+        template "feature_selection_and_prediction/DCLasso_simulations.py"
 }
 
-process feature_selection_and_score {
+process feature_selection_and_prediction {
     tag "model=${MODEL.name};data=${TAG})"
     input:
         each MODEL
@@ -35,7 +36,7 @@ process feature_selection_and_score {
         tuple val("model=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     script:
-        template "feature_selection_and_score/${MODEL.name}.py"
+        template "feature_selection_and_prediction/${MODEL.name}.py"
 }
 
 process feature_selection {
@@ -59,7 +60,7 @@ process feature_selection {
 process prediction {
 
     tag "model=${MODEL.name};${PARAMS}"
-    afterScript 'mv scores.npz scores_model.npz'
+    afterScript 'mv new_scores.npz prediction_scores.npz'
 
     input:
         each MODEL
@@ -67,16 +68,19 @@ process prediction {
         val PARAMS_FILE
 
     output:
-        tuple val("model=${MODEL.name};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ), path('y_proba.npz'), path('y_pred.npz')
+        tuple val("model=${MODEL.name};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("prediction_scores.npz"), path('y_proba.npz'), path('y_pred.npz')
+
+    when:
+        ("${PARAMS}".contains("linear") & "${MODEL.prediction}" == "regression") || (!("${PARAMS}".contains("linear")) & "${MODEL.prediction}" == "classification")
 
     script:
-        template "${mode}/${MODEL.name}.py"
+        template "${MODEL.prediction}/${MODEL.name}.py"
 
 }
 
 process performance {
 
-    tag "${METRIC};${PARAMS}"
+    tag "${METRIC.name};${PARAMS}"
 
     input:
         each METRIC
@@ -85,8 +89,11 @@ process performance {
     output:
         path 'performance.tsv'
 
+    when:
+        ("${PARAMS}".contains("linear") & "${METRIC.prediction}" == "regression") || (!("${PARAMS}".contains("linear")) & "${METRIC.prediction}" == "classification") || ("${METRIC.prediction}" == "both")
+
     script:
-        template "performance/${METRIC}.py"
+        template "performance/${METRIC.name}.py"
 
 }
 
@@ -109,31 +116,34 @@ process plot {
 
 }
 
+config = CWD + "/" + params.config_path
+
 workflow models {
     take:
         data
         feature_selection_methods
         prediction_methods
         dclasso_penalty
-        dclasso_ms
+        dclasso_am
         dclasso_kernel
-        feature_and_join_classification_methods
+        feature_and_prediction_methods
         metrics
+        config_file
     main:
-        feature_selection(feature_selection_methods, data, config)
-        prediction(prediction_methods, feature_selection.out, config)
+        feature_selection(feature_selection_methods, data, config_file)
+        prediction(prediction_methods, feature_selection.out, config_file)
 
-        dclasso(data, dclasso_penalty, dclasso_simulations, dclasso_kernel, config)
+        dclasso(data, dclasso_penalty, dclasso_am, dclasso_kernel, config_file)
 
-        feature_selection_and_classification(feature_and_join_classification_methods, data, config)
+        feature_selection_and_prediction(feature_and_prediction_methods, data, config_file)
 
-        dclasso.out .concat(feature_selection_and_classification.out) .concat(prediction.out) .set{ perf }
+        dclasso.out .concat(feature_selection_and_prediction.out) .concat(prediction.out) .set{ perf }
 
 
         performance(metrics, perf)
 
-    emit:
-        performance.out.collectFile(name: "${params.out}/performance_${mode}.tsv", skip: 1, keepHeader: true)
+//     emit:
+//         performance.out.collectFile(name: "${params.out}/performance.tsv", skip: 1, keepHeader: true)
 }
 
 workflow {
@@ -143,9 +153,10 @@ workflow {
             params.test_samples, params.repeat
         )
         models(
-            simulation.out, params.feature_selection, params.prediction, params.penalty,
-            params.measure_stat, params.kernel, params.feature_selection_and_classification,
-            params.performance_metrics
+            simulation_train_validation_test.out, params.feature_selection, params.prediction,
+            params.penalty, params.measure_stat, params.kernel,
+            params.feature_selection_and_prediction, params.performance_metrics,
+            config
         )
-        plot(models.out)
+        // plot(models.out)
 }

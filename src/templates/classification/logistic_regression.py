@@ -18,7 +18,7 @@ from sklearn.linear_model import LogisticRegression
 from base.sklearn import SklearnModel
 
 
-class LogisticRegerssionModel(SklearnModel):
+class LogisticRegressionModel(SklearnModel):
     def __init__(self) -> None:
         lr = LogisticRegression()
         super().__init__(lr, "classification", "prediction", "logistic_regression")
@@ -31,7 +31,7 @@ class LogisticRegerssionModel(SklearnModel):
 
 
 if __name__ == "__main__":
-    model = LogisticRegerssionModel()
+    model = LogisticRegressionModel()
     model.train_validate(
         "${TRAIN_NPZ}", "${VAL_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}"
     )
