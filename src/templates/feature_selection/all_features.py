@@ -12,11 +12,13 @@ u.set_random_state()
 
 # Read data
 ############################
-_, _, featnames = u.read_data("${TRAIN_NPZ}")
+_, _, featnames, _ = u.read_data("${TRAIN_NPZ}")
 
 # Save selected features
 ############################
 selected = [True for _ in featnames]
 scores = [0 for _ in featnames]
 
-u.save_scores_npz(featnames, selected, scores, {})
+u.save_scores_npz(
+    featnames, selected, scores, {}, "scores_feature_selection_all_features.npz"
+)

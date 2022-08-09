@@ -53,6 +53,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         kernel: str = "linear",
         ms_kwargs: dict = {},
         normalise_input: bool = True,
+        hard_alpha: bool = True,
+        alpha_increase: float = 0.05,
         verbose: bool = False,
     ) -> None:
         super().__init__()
@@ -64,6 +66,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.kernel = kernel
         self.ms_kwargs = ms_kwargs
         self.normalise_input = normalise_input  # default value
+        self.hard_alpha = hard_alpha
+        self.alpha_increase = alpha_increase
         self.verbose = verbose
 
     def _compute_assoc(self, x, y=None, **kwargs):
@@ -87,8 +91,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         seed: int = 42,
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
-        mode: str = "competitive",
         init="from_convex_solve",
+        data_recycling: bool = True,
         optimizer: str = "SGD",
         penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
         opt_kwargs: dict = {
@@ -111,49 +115,38 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.n_features_in_ = p
 
         # we have to prescreen and split if needed
-        X2, y2, self.screen_indices_, d = self.screen_split(X, y, n, p, n1, d, key)
+        X2, y2, X1, y1, self.screen_indices_, d = self.screen_split(
+            X, y, n, p, n1, d, key
+        )
 
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
-
-        if mode == "competitive":
-            Xs = [np.concatenate([X2, Xhat], axis=1)]
+        if data_recycling:
+            Xs = np.concatenate([X1, X2, X1, Xhat], axis=1)
+            ys = np.concatenate([y1, y2])
         else:
-            Xs = [X2, Xhat]
-
-        # Iterate on X if competitive
-        betas = []
-        for x in Xs:
-            # Penalty/Loss setting
-            loss_fn = self.compute_loss_fn(x, y2, penalty_kwargs)
-            step_function, opt_state, beta = self.setup_optimisation(
-                loss_fn,
-                optimizer,
-                x.shape[1],
-                key,
-                init,
-                self.Dxx,
-                self.Dxy,
-                opt_kwargs,
-            )
-            beta, value = minimize_loss(
-                step_function,
-                opt_state,
-                beta,
-                max_epoch,
-                eps_stop,
-                verbose=self.verbose,
-            )
-            betas.append(beta)
-
-        if mode == "competitive":
-            self.beta_ = betas[0]
-        else:
-            self.beta_ = np.concatenate([betas[0], betas[1]], axis=0)
+            Xs = np.concatenate([X2, Xhat], axis=1)
+            ys = y2
+        self.beta_, value = self.minimize_loss_function(
+            Xs,
+            ys,
+            penalty_kwargs,
+            optimizer,
+            init,
+            opt_kwargs,
+            max_epoch,
+            eps_stop,
+            key,
+        )
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
         alpha_thres = alpha_threshold(
-            self.alpha, self.wjs_, self.screen_indices_, verbose=self.verbose
+            self.alpha,
+            self.wjs_,
+            self.screen_indices_,
+            hard_alpha=self.hard_alpha,
+            alpha_increase=self.alpha_increase,
+            verbose=self.verbose,
         )
 
         self.alpha_indices_ = alpha_thres[0]
@@ -162,6 +155,32 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.final_loss_ = value
 
         return self
+
+    def minimize_loss_function(
+        self, x, y, pen_kwargs, optimizer, init, opt_kwargs, max_epoch, eps_stop, key
+    ):
+        # Penalty/Loss setting
+        loss_fn = self.compute_loss_fn(x, y, pen_kwargs)
+        step_function, opt_state, beta = self.setup_optimisation(
+            loss_fn,
+            optimizer,
+            x.shape[1],
+            key,
+            init,
+            self.Dxx,
+            self.Dxy,
+            opt_kwargs,
+        )
+        beta, value = minimize_loss(
+            step_function,
+            opt_state,
+            beta,
+            max_epoch,
+            eps_stop,
+            verbose=self.verbose,
+        )
+
+        return beta, value
 
     def cv_fit(
         self,
@@ -175,20 +194,21 @@ class DCLasso(BaseEstimator, TransformerMixin):
         seed: int = 42,
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
-        mode: str = "competitive",
         init: str = "from_convex_solve",
+        data_recycling: bool = True,
         minimize_val_loss: bool = False,
         evaluate_function: Callable[
             [npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike], float
         ] = None,
         refit: bool = True,
     ):
-        if mode != "competitive":
-            raise NotImplementedError("Only competitive mode is implemented")
+
         key = random.PRNGKey(seed)
         X, y = check_X_y(X, y)
         X = np.asarray(X)
+        y = np.asarray(y)
         X_val, y_val = check_X_y(X_val, y_val)
+        y_val = np.asarray(y_val)
         X_val = np.asarray(X_val)
         n, p = X.shape
 
@@ -196,7 +216,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
         assert n == ny
         assert X_val.shape[0] == y_val.shape[0]
         assert p == X_val.shape[1]
-        y = np.asarray(y)
 
         self.n_features_in_ = p
 
@@ -211,16 +230,27 @@ class DCLasso(BaseEstimator, TransformerMixin):
         for ms, kernel in generator_ms_kernel:
             self.measure_stat = ms
             self.kernel = kernel
-            X2, y2, screen_indices, d = self.screen_split(X, y, n, p, n1, d, key)
+            X2, y2, X1, y1, screen_indices, d = self.screen_split(
+                X, y, n, p, n1, d, key
+            )
             Xhat = get_equi_features(X2, key)
             self.ms_kwargs = precompute_kernels_match(ms, X, y, kernel, self.ms_kwargs)
-            Xs = np.concatenate([X2, Xhat], axis=1)
-            Dxy = self._compute_assoc(Xs, y2, **self.ms_kwargs)
+            if data_recycling:
+                Xs = np.concatenate([X1, X2, X1, Xhat], axis=1)
+                ys = np.concatenate([y1, y2])
+            else:
+                Xs = np.concatenate([X2, Xhat], axis=1)
+                ys = y2
+            Dxy = self._compute_assoc(Xs, ys, **self.ms_kwargs)
             Dxx = self._compute_assoc(Xs, **self.ms_kwargs)
 
             if minimize_val_loss:
-                Dxy_val = self._compute_assoc(X_val, y_val, **self.ms_kwargs)
-                Dxx_val = self._compute_assoc(X_val, **self.ms_kwargs)
+                Dxy_val = self._compute_assoc(
+                    X_val[:, screen_indices], y_val, **self.ms_kwargs
+                )
+                Dxx_val = self._compute_assoc(
+                    X_val[:, screen_indices], **self.ms_kwargs
+                )
 
             for hyper in hyperparameter_generator:
                 if self.verbose:
@@ -257,9 +287,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
                             loss,
                             Dxy=Dxy_val,
                             Dxx=Dxx_val,
-                            penalty_func=pic_penalty(penalty_kwargs),
+                            penalty_func=pic_penalty("None"),
                         )
-                        score = float(loss_val(beta))
+                        score = float(loss_val(beta[:d]))
                     elif evaluate_function:
                         score = evaluate_function(
                             X2[:, selected_features],
@@ -269,16 +299,15 @@ class DCLasso(BaseEstimator, TransformerMixin):
                         )
                     else:
                         raise NotImplementedError("No valid way of cross-validating")
-
                     dict_scores[name] = (score, selected_features)
                     if score < best_score:
                         best_score = score
-                        best_features = selected_features
+                        best_features = list(selected_features)
                         best_wj = wj[wj >= threshold]
                 else:
                     dict_scores[name] = (np.inf, [])
         if refit:
-            if nout:
+            if best_features:
                 self.alpha_indices_ = np.array(best_features)
             else:
                 print("Warning: no features selected")
@@ -396,10 +425,11 @@ class DCLasso(BaseEstimator, TransformerMixin):
         else:
             if self.verbose:
                 print("No screening")
+            X1, y1 = np.zeros(shape=(0, d)), np.zeros(shape=(0, 1))
             X2, y2 = X, y
             screened_indices = np.arange(p)
 
-        return X2, y2, screened_indices, d
+        return X2, y2, X1, y1, screened_indices, d
 
     def compute_loss_fn(self, X, y, penalty_kwargs):
         self.ms_kwargs = precompute_kernels_match(
@@ -427,7 +457,9 @@ def precompute_kernels_match(measure_stat, X, y, kernel, ms_kwargs):
     return ms_kwargs
 
 
-def alpha_threshold(alpha, wjs, indices, verbose=True):
+def alpha_threshold(
+    alpha, wjs, indices, hard_alpha=True, alpha_increase=0.05, verbose=True
+):
     """
     Computes the selected features with respect to alpha.
     Parameters
@@ -441,13 +473,18 @@ def alpha_threshold(alpha, wjs, indices, verbose=True):
         2 - the threshold value.
         3 - the number of selected features.
     """
-    alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha, verbose)
-    if verbose:
-        if len(alpha_indices_):
-            print("selected features: ", alpha_indices_)
-        else:
-            print("No features were selected, returning empty set.")
-    n_features_out_ = len(alpha_indices_)
+    n_out = []
+    while not n_out and alpha <= 1.0:
+        alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha, verbose)
+        if verbose:
+            if len(alpha_indices_):
+                print("selected features: ", alpha_indices_)
+            else:
+                print("No features were selected, returning empty set.")
+        n_features_out_ = len(alpha_indices_)
+        alpha += alpha_increase
+        if hard_alpha:
+            break
     return alpha_indices_, t_alpha_, n_features_out_
 
 

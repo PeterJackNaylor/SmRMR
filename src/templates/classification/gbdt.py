@@ -21,7 +21,7 @@ from base.sklearn import SklearnModel
 class GBDTModel(SklearnModel):
     def __init__(self) -> None:
         gbdt = LGBMClassifier(objective="binary", n_estimators=1000)
-        super().__init__(gbdt, "gbdt")
+        super().__init__(gbdt, "classification", "prediction", "gbdt")
 
     def score_features(self):
         return self.clf.best_estimator_.feature_importances_
@@ -32,6 +32,8 @@ class GBDTModel(SklearnModel):
 
 if __name__ == "__main__":
     model = GBDTModel()
-    model.train("${TRAIN_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}")
+    model.train_validate(
+        "${TRAIN_NPZ}", "${VAL_NPZ}", "${SCORES_NPZ}", "${PARAMS_FILE}"
+    )
     model.predict_proba("${TEST_NPZ}", "${SCORES_NPZ}")
     model.predict("${TEST_NPZ}", "${SCORES_NPZ}")

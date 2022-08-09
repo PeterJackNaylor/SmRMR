@@ -18,7 +18,7 @@ y_pred = np.load("${PRED_NPZ}")["preds"]
 
 score = np.nan
 if len(y_pred):
-    labels = list(np.unique(y_pred).astype(int))
+    labels = list(np.unique(y).astype(int))
     tn, fp, fn, tp = confusion_matrix(y, y_pred, labels=labels).ravel()
     acc = (tn + tp) / (tn + fp + fn + tp)
     tpr = tp / (tp + fn)
