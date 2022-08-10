@@ -92,7 +92,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
         init="from_convex_solve",
-        data_recycling: bool = True,
+        data_recycling: bool = False,
         optimizer: str = "SGD",
         penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
         opt_kwargs: dict = {
@@ -122,8 +122,11 @@ class DCLasso(BaseEstimator, TransformerMixin):
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
         if data_recycling:
-            Xs = np.concatenate([X1, X2, X1, Xhat], axis=1)
-            ys = np.concatenate([y1, y2])
+            X1_n = X1[:, self.screen_indices_]
+            X1_tild = np.concatenate([X1_n, X1_n], axis=1)
+            X2_tild = np.concatenate([X2, Xhat], axis=1)
+            Xs = np.concatenate([X1_tild, X2_tild], axis=0)
+            ys = np.concatenate([y1, y2], axis=0)
         else:
             Xs = np.concatenate([X2, Xhat], axis=1)
             ys = y2
@@ -211,7 +214,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
         y_val = np.asarray(y_val)
         X_val = np.asarray(X_val)
         n, p = X.shape
-
         (ny,) = y.shape
         assert n == ny
         assert X_val.shape[0] == y_val.shape[0]
@@ -236,8 +238,11 @@ class DCLasso(BaseEstimator, TransformerMixin):
             Xhat = get_equi_features(X2, key)
             self.ms_kwargs = precompute_kernels_match(ms, X, y, kernel, self.ms_kwargs)
             if data_recycling:
-                Xs = np.concatenate([X1, X2, X1, Xhat], axis=1)
-                ys = np.concatenate([y1, y2])
+                X1_n = X1[:, self.screen_indices_]
+                X1_tild = np.concatenate([X1_n, X1_n], axis=1)
+                X2_tild = np.concatenate([X2, Xhat], axis=1)
+                Xs = np.concatenate([X1_tild, X2_tild], axis=0)
+                ys = np.concatenate([y1, y2], axis=0)
             else:
                 Xs = np.concatenate([X2, Xhat], axis=1)
                 ys = y2
@@ -287,7 +292,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
                             loss,
                             Dxy=Dxy_val,
                             Dxx=Dxx_val,
-                            penalty_func=pic_penalty("None"),
+                            penalty_func=pic_penalty({"name": "None"}),
                         )
                         score = float(loss_val(beta[:d]))
                     elif evaluate_function:

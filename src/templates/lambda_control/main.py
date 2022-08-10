@@ -104,7 +104,7 @@ def perform_optimisation_with_parameters(
         loss,
         Dxy=dclasso_main.Dxy,
         Dxx=dclasso_main.Dxx,
-        penalty_func=pic_penalty("None"),
+        penalty_func=pic_penalty({"name": "None"}),
     )
 
     loss_train = float(loss_fn(beta))
@@ -112,7 +112,7 @@ def perform_optimisation_with_parameters(
         loss,
         Dxy=dclasso_main.Dxy_val,
         Dxx=dclasso_main.Dxx_val,
-        penalty_func=pic_penalty("None"),
+        penalty_func=pic_penalty({"name": "None"}),
     )
     loss_valid = float(loss_fn(beta[:d]))
     if pen != "None":
