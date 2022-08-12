@@ -113,6 +113,7 @@ def get_equi_features(X, key, eps=1e-8):
     sigma_inv = jnp.linalg.inv(sigma)
 
     sj = min([1.0, 2.0 * lambd_min])
+    print("eigen value", sj)
     if sj <= 0:
         sj = eps
     # why does this line make A invertible...

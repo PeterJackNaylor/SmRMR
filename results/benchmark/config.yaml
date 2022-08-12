@@ -20,7 +20,7 @@ dclasso:
       epoch: 150
       optimizer: ["adam"]
       lambda: [0, 0.01, 0.1, 0.5, 1.0]
-      lr: [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e-1]
+      lr: [1.e-5, 1.e-4, 1.e-3, 1.e-2, 1.e10]
 feature_selection:
   - name: hsic_lasso
     parameters:
