@@ -55,7 +55,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         normalise_input: bool = True,
         hard_alpha: bool = True,
         alpha_increase: float = 0.05,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
         super().__init__()
         self.alpha = alpha
