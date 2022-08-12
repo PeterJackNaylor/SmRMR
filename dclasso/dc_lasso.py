@@ -92,7 +92,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         max_epoch: int = 151,
         eps_stop: float = 1e-8,
         init="from_convex_solve",
-        data_recycling: bool = False,
+        data_recycling: bool = True,
         optimizer: str = "SGD",
         penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
         opt_kwargs: dict = {
@@ -116,14 +116,20 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         # we have to prescreen and split if needed
         X2, y2, X1, y1, self.screen_indices_, d = self.screen_split(
-            X, y, n, p, n1, d, key
+            X,
+            y,
+            n,
+            p,
+            n1,
+            d,
+            penalty_kwargs["name"],
+            key,
         )
 
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
         if data_recycling:
-            X1_n = X1[:, self.screen_indices_]
-            X1_tild = np.concatenate([X1_n, X1_n], axis=1)
+            X1_tild = np.concatenate([X1, X1], axis=1)
             X2_tild = np.concatenate([X2, Xhat], axis=1)
             Xs = np.concatenate([X1_tild, X2_tild], axis=0)
             ys = np.concatenate([y1, y2], axis=0)
@@ -143,6 +149,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         )
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
+
         alpha_thres = alpha_threshold(
             self.alpha,
             self.wjs_,
@@ -182,7 +189,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
             eps_stop,
             verbose=self.verbose,
         )
-
         return beta, value
 
     def cv_fit(
@@ -195,10 +201,10 @@ class DCLasso(BaseEstimator, TransformerMixin):
         n1: float,
         d: int = None,
         seed: int = 42,
-        max_epoch: int = 151,
+        max_epoch: int = 301,
         eps_stop: float = 1e-8,
         init: str = "from_convex_solve",
-        data_recycling: bool = True,
+        data_recycling: bool = False,
         minimize_val_loss: bool = False,
         evaluate_function: Callable[
             [npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike], float
@@ -225,31 +231,45 @@ class DCLasso(BaseEstimator, TransformerMixin):
             param_grid, self.measure_stat, self.kernel
         )
 
-        best_score = np.inf
-        best_features = []
-        best_wj = []
         dict_scores = {}
+
         for ms, kernel in generator_ms_kernel:
             self.measure_stat = ms
             self.kernel = kernel
+            # we have to prescreen and split if needed
+            if len(param_grid["penalty"]) == 1:
+                pen = param_grid["penalty"][0]
+            else:
+                pen = "None"
             X2, y2, X1, y1, screen_indices, d = self.screen_split(
-                X, y, n, p, n1, d, key
+                X,
+                y,
+                n,
+                p,
+                n1,
+                d,
+                pen,
+                key,
             )
             Xhat = get_equi_features(X2, key)
-            self.ms_kwargs = precompute_kernels_match(ms, X, y, kernel, self.ms_kwargs)
             if data_recycling:
-                X1_n = X1[:, self.screen_indices_]
-                X1_tild = np.concatenate([X1_n, X1_n], axis=1)
+                X1_tild = np.concatenate([X1, X1], axis=1)
                 X2_tild = np.concatenate([X2, Xhat], axis=1)
                 Xs = np.concatenate([X1_tild, X2_tild], axis=0)
                 ys = np.concatenate([y1, y2], axis=0)
             else:
                 Xs = np.concatenate([X2, Xhat], axis=1)
                 ys = y2
+
+            # self.ms_kwargs = precompute_kernels_match(
+            # ms, Xs, ys, kernel, self.ms_kwargs
+            # )
+
             Dxy = self._compute_assoc(Xs, ys, **self.ms_kwargs)
             Dxx = self._compute_assoc(Xs, **self.ms_kwargs)
 
             if minimize_val_loss:
+
                 Dxy_val = self._compute_assoc(
                     X_val[:, screen_indices], y_val, **self.ms_kwargs
                 )
@@ -260,15 +280,18 @@ class DCLasso(BaseEstimator, TransformerMixin):
             for hyper in hyperparameter_generator:
                 if self.verbose:
                     print(hyper)
+
                 optimizer = hyper["optimizer"]
                 penalty_kwargs = hyper["penalty_kwargs"]
                 opt_kwargs = hyper["opt_kwargs"]
+
                 loss_fn = partial(
                     loss, Dxy=Dxy, Dxx=Dxx, penalty_func=pic_penalty(penalty_kwargs)
                 )
                 step_function, opt_state, beta = self.setup_optimisation(
                     loss_fn, optimizer, Xs.shape[1], key, init, Dxx, Dxy, opt_kwargs
                 )
+
                 beta, _ = minimize_loss(
                     step_function,
                     opt_state,
@@ -277,9 +300,16 @@ class DCLasso(BaseEstimator, TransformerMixin):
                     eps_stop,
                     verbose=self.verbose,
                 )
+
                 wj = beta[:d] - beta[d:]
-                selected_features, threshold, nout = alpha_threshold(
-                    self.alpha, wj, screen_indices, verbose=self.verbose
+                selected_features, threshold, nout, adapted_alpha = alpha_threshold(
+                    self.alpha,
+                    wj,
+                    screen_indices,
+                    hard_alpha=self.hard_alpha,
+                    alpha_increase=self.alpha_increase,
+                    return_alpha=True,
+                    verbose=self.verbose,
                 )
                 name = (
                     f"ms={ms}_kernel={kernel}_optimizer={optimizer}"
@@ -304,18 +334,34 @@ class DCLasso(BaseEstimator, TransformerMixin):
                         )
                     else:
                         raise NotImplementedError("No valid way of cross-validating")
-                    dict_scores[name] = (score, selected_features)
-                    if score < best_score:
-                        best_score = score
-                        best_features = list(selected_features)
-                        best_wj = wj[wj >= threshold]
+                    dict_scores[name] = (
+                        score,
+                        np.array(selected_features),
+                        adapted_alpha,
+                        threshold,
+                        wj.copy(),
+                    )
                 else:
-                    dict_scores[name] = (np.inf, [])
+                    dict_scores[name] = (np.inf, [], 1.0, 0.0, [])
+
+        # Selected best set of features, best score and closest to alpha
+        best_score = np.inf
+        best_features = []
+        best_wj = []
+        for key, item in dict_scores.items():
+            score, selected_features, aalpha, threshold, wj = item
+            if len(selected_features):
+                if score < best_score:
+                    best_score = score
+                    best_features = selected_features.tolist()
+                    best_wj = wj[wj >= float(threshold)]
+
         if refit:
             if best_features:
                 self.alpha_indices_ = np.array(best_features)
             else:
                 print("Warning: no features selected")
+
         return best_score, best_features, best_wj, dict_scores
 
     def transform(self, X: npt.ArrayLike) -> npt.ArrayLike:
@@ -383,7 +429,12 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 )
             case "from_convex_solve":
                 # without penalty
-                beta = np.matmul(np.linalg.inv(Dxx), Dxy)
+                Dxx_minus_1 = np.linalg.inv(Dxx)
+                eps = 1e-6
+                while np.isnan(Dxx_minus_1).any():
+                    Dxx_minus_1 = np.linalg.inv(Dxx + eps * np.eye(Dxx.shape[0]))
+                    eps *= 10
+                beta = np.matmul(Dxx_minus_1, Dxy)
                 beta = pos_proj(beta)
         return beta
 
@@ -399,14 +450,82 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         return step, opt_state
 
-    def screen(self, X, y, d):
+    def marginal_screen(self, X, y, d):
 
         Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
         screened_indices = top_k(Dxy, d)[1]
 
         return screened_indices
 
-    def screen_split(self, X, y, n, p, n1, d, key):
+    def feature_feature_screen(self, X, y, d, penalty, key):
+
+        Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
+        Dxx = self._compute_assoc(X, **self.ms_kwargs)
+
+        # Default parameters
+        max_epoch = 200
+        eps_stop = 1e-8
+        init = "from_convex_solve"
+        penalty_kwargs = {"name": f"{penalty}", "lamb": 0.5}
+        optimizer = "adam"
+        opt_kwargs = {
+            "init_value": 0.001,
+            "transition_steps": 100,
+            "decay_rate": 0.99,
+        }
+        loss_fn = partial(
+            loss, Dxy=Dxy, Dxx=Dxx, penalty_func=pic_penalty(penalty_kwargs)
+        )
+        step_function, opt_state, beta = self.setup_optimisation(
+            loss_fn, optimizer, X.shape[1], key, init, Dxx, Dxy, opt_kwargs
+        )
+        beta, _ = minimize_loss(
+            step_function,
+            opt_state,
+            beta,
+            max_epoch,
+            eps_stop,
+            verbose=self.verbose,
+        )
+        screened_indices = selected_top_k(beta, d)
+        return screened_indices
+
+    def feature_feature_screen_nonzeros(self, X, y, d, penalty, key):
+
+        Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
+        Dxx = self._compute_assoc(X, **self.ms_kwargs)
+
+        # Default parameters
+        max_epoch = 150
+        eps_stop = 1e-8
+        init = "from_convex_solve"
+        penalty_kwargs = {"name": f"{penalty}", "lamb": 0.5}
+        optimizer = "adam"
+        opt_kwargs = {
+            "init_value": 0.001,
+            "transition_steps": 100,
+            "decay_rate": 0.99,
+        }
+        loss_fn = partial(
+            loss, Dxy=Dxy, Dxx=Dxx, penalty_func=pic_penalty(penalty_kwargs)
+        )
+        step_function, opt_state, beta = self.setup_optimisation(
+            loss_fn, optimizer, X.shape[1], key, init, Dxx, Dxy, opt_kwargs
+        )
+        beta, _ = minimize_loss(
+            step_function,
+            opt_state,
+            beta,
+            max_epoch,
+            eps_stop,
+            verbose=self.verbose,
+        )
+
+        nonzeros = np.where(beta != 0)[0]
+        screened_indices = beta.argsort()[-nonzeros.shape[0] :][::-1]
+        return screened_indices
+
+    def screen_split(self, X, y, n, p, n1, d, penalty, key):
         """
         If needed, screen the features of X and y and split X, y.
         """
@@ -417,29 +536,44 @@ class DCLasso(BaseEstimator, TransformerMixin):
             raise ValueError(msg)
 
         if screening:
+            # 1 - pre-screening by only checking the marginals
             if self.verbose:
                 print("Starting screening")
 
             s1, s2 = generate_random_sets(n, n1, key)
             X1, y1 = X[s1, :], y[s1]
             X2, y2 = X[s2, :], y[s2]
+            screened_indices = np.arange(p)
+            if 4 * d < p:
+                screened_indices = self.marginal_screen(X1, y1, 4 * d)
+                X1 = X1[:, screened_indices]
+                X2 = X2[:, screened_indices]
 
-            screened_indices = self.screen(X1, y1, d)
-            X2 = X2[:, screened_indices]
+            screened_indices_2 = self.feature_feature_screen(X2, y2, d, penalty, key)
+            X1 = X1[:, screened_indices_2]
+            X2 = X2[:, screened_indices_2]
+            screened_indices = screened_indices[screened_indices_2]
 
         else:
             if self.verbose:
-                print("No screening")
-            X1, y1 = np.zeros(shape=(0, d)), np.zeros(shape=(0, 1))
-            X2, y2 = X, y
-            screened_indices = np.arange(p)
+                print("Only non-zero screening")
 
+            screened_indices = self.feature_feature_screen_nonzeros(
+                X, y, d, penalty, key
+            )
+            d = screened_indices.shape[0]
+
+            X = X[:, screened_indices]
+
+            X1, y1 = np.zeros(shape=(0, d)), np.zeros(shape=(0,))
+            X2, y2 = X, y
         return X2, y2, X1, y1, screened_indices, d
 
     def compute_loss_fn(self, X, y, penalty_kwargs):
-        self.ms_kwargs = precompute_kernels_match(
-            self.measure_stat, X, y, self.kernel, self.ms_kwargs
-        )
+
+        # self.ms_kwargs = precompute_kernels_match(
+        #     self.measure_stat, X, y, self.kernel, self.ms_kwargs
+        # )
 
         # made as self so that they can re-used for the
         # initialisation
@@ -463,7 +597,13 @@ def precompute_kernels_match(measure_stat, X, y, kernel, ms_kwargs):
 
 
 def alpha_threshold(
-    alpha, wjs, indices, hard_alpha=True, alpha_increase=0.05, verbose=True
+    alpha,
+    wjs,
+    indices,
+    hard_alpha=True,
+    alpha_increase=0.05,
+    return_alpha=False,
+    verbose=True,
 ):
     """
     Computes the selected features with respect to alpha.
@@ -478,18 +618,24 @@ def alpha_threshold(
         2 - the threshold value.
         3 - the number of selected features.
     """
+    init_alpha = alpha
     n_out = []
-    while not n_out and alpha <= 1.0:
+    while not n_out and alpha < 1.0:
         alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha, verbose)
-        if verbose:
-            if len(alpha_indices_):
-                print("selected features: ", alpha_indices_)
-            else:
-                print("No features were selected, returning empty set.")
         n_features_out_ = len(alpha_indices_)
         alpha += alpha_increase
+        n_out = list(alpha_indices_)
         if hard_alpha:
             break
+
+    if verbose:
+        if len(alpha_indices_):
+            print("selected features: ", alpha_indices_)
+            print(f"init alpha: {init_alpha}; last alpha: {alpha}")
+        else:
+            print("No features were selected, returning empty set.")
+    if return_alpha:
+        return alpha_indices_, t_alpha_, n_features_out_, alpha
     return alpha_indices_, t_alpha_, n_features_out_
 
 
@@ -744,3 +890,7 @@ def gene_generators(param_grid, measure_stat, kernel):
                             yield dic
 
     return ms_kernel_gen(param_grid, measure_stat, kernel), hp_gen(param_grid)
+
+
+def selected_top_k(beta, d):
+    return np.argsort(beta)[-d:][::-1]

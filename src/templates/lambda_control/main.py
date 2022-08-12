@@ -167,7 +167,7 @@ param_grid = yaml.load(f, Loader=yaml.Loader)
 penalty = param_grid["penalty"]
 optimizer = param_grid["optimizer"]
 lambdas = param_grid["lambda"]
-
+n1 = param_grid["n1"]
 
 iterable = build_iterator(penalty, optimizer, lambdas)
 
@@ -176,7 +176,7 @@ penalty_init, optimizer_init, lambda_init = next(iterable)
 penalty_kwargs = {"name": penalty_init, "lamb": lambda_init}
 
 # File parameters
-alpha_list = np.arange(0.1, 1, 0.1)
+alpha_list = np.arange(0.1, 1, 0.05)
 fdr_alpha = []
 selected_variables = []
 loss_trains = []
@@ -201,7 +201,7 @@ dl = DCLasso(alpha=alpha_list[0], measure_stat=am, kernel=kernel)
 dl.fit(
     X,
     y,
-    n1=0.5,
+    n1=n1,
     max_epoch=max_epoch,
     penalty_kwargs=penalty_kwargs,
     optimizer=optimizer[0],

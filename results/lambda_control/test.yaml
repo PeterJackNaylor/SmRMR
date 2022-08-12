@@ -1,6 +1,7 @@
 out: results/lambda_control
 config_path: results/lambda_control/test.yaml
 repeat: 2
+n1: 0.3
 simulation_np: [[100, 100], [100, 500], [500, 100]]
 validation_samples: [[100, 100], [100, 500]]
 measure_stat:
@@ -11,5 +12,6 @@ penalty: ["l1", "None"]
 optimizer: ["adam"]
 lambda: [0.001, 0.1]
 simulation_models:
-- 'categorical_1'
-- 'categorical_2'
+- 'linear_0'
+# - 'categorical_1'
+# - 'categorical_2'
