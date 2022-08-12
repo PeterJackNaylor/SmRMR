@@ -3,15 +3,16 @@ config_path: results/lambda_control/nf_config.yaml
 repeat: 20
 simulation_np: [[100, 100], [100, 500], [100, 5000], [500, 100], [500, 500], [500, 5000], [1000, 5000]]
 validation_samples: [[100, 100], [100, 500], [100, 5000]]
+n1: 0.3
 measure_stat:
 - "DC"
 - "HSIC"
 - "PC"
 - "pearson_correlation"
-kernel: ["linear", "gaussian",  "tanh", "inverse-M"] # "sigmoid", "laplacian",
+kernel: ["linear", "gaussian",  "tanh", "inverse-M", "laplacian"]
 penalty: ["l1", "None", "scad", "mcp"]
 optimizer: ["SGD", "adam"]
-lambda: [0.001, 0.01, 0.1, 0.5, 1.0, 10.0]
+lambda: [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 100.]
 simulation_models:
 - 'categorical_1'
 - 'categorical_2'
@@ -22,6 +23,6 @@ simulation_models:
 # - 'linear_3'
 - 'nonlinear_1'
 - 'nonlinear_2'
-# - 'nonlinear_3'
+# 'nonlinear_3'
 # - 'nonlinear_4'
 # - 'nonlinear_5'
