@@ -11,7 +11,7 @@ measure_stat:
 - "pearson_correlation"
 kernel: ["linear", "gaussian",  "tanh", "inverse-M", "laplacian"]
 penalty: ["l1", "None", "scad", "mcp"]
-optimizer: ["SGD", "adam"]
+optimizer: ["adam"]
 lambda: [0.001, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 100.]
 simulation_models:
 - 'categorical_1'
