@@ -227,6 +227,78 @@ def process(table):
     return table
 
 
+row_dic = {100: 1, 500: 2, 5000: 3}
+col_dic = {100: 1, 500: 2, 1000: 3}
+
+titles = tuple(
+    f"<b> {text} </b>" if text != "" else text
+    for text in [
+        "n = 100; p = 100",
+        "n = 500; p = 100",
+        "",
+        "n = 100; p = 500",
+        "n = 500; p = 500",
+        "",
+        "n = 100; p = 5000",
+        "n = 500; p = 5000",
+        "n = 1000; p = 5000",
+    ]
+)
+
+
+def create_table(df, mode):
+    if mode == "regression":
+        order_cols = ["mse", "fdr_causal", "fpr_causal", "tpr_causal"]
+        nicer_names = ["MSE", "FDR", "FPR", "TPR"]
+    else:
+        order_cols = ["accuracy", "fdr_causal", "fpr_causal", "tpr_causal"]
+        nicer_names = ["Acc", "FDR", "FPR", "TPR"]
+
+    pivot_df = pd.pivot_table(
+        df,
+        index=["datatype", "model", "fs"],
+        columns=["metric"],
+        values=["value"],
+        aggfunc="mean",
+    )
+    new_cols = [it[1] for it in pivot_df.columns]
+    pivot_df.columns = new_cols
+    pivot_df = pivot_df[order_cols]
+    pivot_df.columns = nicer_names
+    return pivot_df
+
+
+def multi_table_plot(df):
+
+    modes = df["mode"].unique()
+    for mode in modes:
+        # fig = make_subplots(cols=3, rows=3, shared_xaxes=False, shared_yaxes=False)
+        df_mode = df[df["mode"] == mode]
+        unique_n_p = df_mode.groupby(["n", "p"]).size().reset_index(name="Freq")
+        for i in unique_n_p.index:
+            n, p = unique_n_p.loc[i, ["n", "p"]]
+            df_n_p_mode = df[(df["n"] == n) & (df["p"] == p)]
+            _ = create_table(df_n_p_mode, mode)
+
+            _ = go.Figure(
+                data=[
+                    go.Table(
+                        header=dict(
+                            values=list(df.fig_table),
+                            fill_color="paleturquoise",
+                            align="left",
+                        ),
+                        cells=dict(
+                            values=[df.Rank, df.State, df.Postal, df.Population],
+                            fill_color="lavender",
+                            align="left",
+                        ),
+                    )
+                ]
+            )
+
+
 def main(table):
 
     table = process(table)
+    multi_table_plot(table)
