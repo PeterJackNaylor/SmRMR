@@ -13,7 +13,7 @@ from sklearn.utils.validation import check_X_y
 
 from . import association_measures as am
 from .association_measures.hsic import precompute_kernels
-from .association_measures.distance_correlation import pdist_p
+from .association_measures.distance_correlation import pdist_p, fill_diagonal
 from .penalties import pic_penalty
 from .utils import (
     knock_off_check_parameters,
@@ -261,12 +261,15 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 Xs = np.concatenate([X2, Xhat], axis=1)
                 ys = y2
 
-            # self.ms_kwargs = precompute_kernels_match(
-            # ms, Xs, ys, kernel, self.ms_kwargs
-            # )
+            self.ms_kwargs = precompute_kernels_match(
+                ms, Xs, ys, kernel, self.ms_kwargs, self.normalise_input
+            )
 
             Dxy = self._compute_assoc(Xs, ys, **self.ms_kwargs)
             Dxx = self._compute_assoc(Xs, **self.ms_kwargs)
+
+            if "precompute" in self.ms_kwargs:
+                del self.ms_kwargs["precompute"]
 
             if minimize_val_loss:
 
@@ -302,6 +305,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
                 )
 
                 wj = beta[:d] - beta[d:]
+
                 selected_features, threshold, nout, adapted_alpha = alpha_threshold(
                     self.alpha,
                     wj,
@@ -571,14 +575,16 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
     def compute_loss_fn(self, X, y, penalty_kwargs):
 
-        # self.ms_kwargs = precompute_kernels_match(
-        #     self.measure_stat, X, y, self.kernel, self.ms_kwargs
-        # )
-
+        self.ms_kwargs = precompute_kernels_match(
+            self.measure_stat, X, y, self.kernel, self.ms_kwargs, self.normalise_input
+        )
         # made as self so that they can re-used for the
         # initialisation
         self.Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
         self.Dxx = self._compute_assoc(X, **self.ms_kwargs)
+
+        if "precompute" in self.ms_kwargs:
+            del self.ms_kwargs["precompute"]
 
         loss_fn = partial(
             loss, Dxy=self.Dxy, Dxx=self.Dxx, penalty_func=pic_penalty(penalty_kwargs)
@@ -587,7 +593,10 @@ class DCLasso(BaseEstimator, TransformerMixin):
         return loss_fn
 
 
-def precompute_kernels_match(measure_stat, X, y, kernel, ms_kwargs):
+def precompute_kernels_match(measure_stat, X, y, kernel, ms_kwargs, normalise_input):
+    if measure_stat in ["HSIC", "DC"] and normalise_input:
+        X = X / np.linalg.norm(X, ord=2, axis=0)
+
     match measure_stat:
         case "HSIC" | "cMMD":
             ms_kwargs["precompute"] = compute_kernels_for_am(X, y, kernel, **ms_kwargs)
@@ -753,11 +762,26 @@ def compute_distance_for_am(X, y, **kwargs):
     p = kwargs["order_x"] if "order_x" in kwargs.keys() else 2
     q = kwargs["order_x"] if "order_y" in kwargs.keys() else 2
 
-    def jit_precompute_dist_x(x):
-        return pdist_p(x, x, p=p)
+    def pdist_A(x, y, p, unbiased=False):
+        n = X.shape[0]
+        A = pdist_p(x, y, p)
+        if unbiased:
+            A_1 = np.tile(A.sum(axis=1), (n, 1)) / (n - 2)
+            A_0 = np.tile(A.sum(axis=0), (1, n)).reshape(n, n, order="F") / (n - 2)
+            A = A - A_0 - A_1 + A.sum() / ((n - 1) * (n - 2))
+            A = fill_diagonal(A, 0)
+        else:
+            A_1 = np.tile(A.mean(axis=1), (n, 1))
+            A_0 = np.tile(A.mean(axis=0), (1, n)).reshape(n, n, order="F")
+            mean = A.mean()
+            A = A - A_0 - A_1 + mean
+        return A
 
-    def jit_precompute_dist_y(x):
-        return pdist_p(x, x, p=q)
+    def jit_precompute_dist_x(x):
+        return pdist_A(x, x, p=p)
+
+    def jit_precompute_dist_y(y):
+        return pdist_A(y, y, p=q)
 
     @jit
     def precompX(k):
