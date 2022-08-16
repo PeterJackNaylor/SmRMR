@@ -28,7 +28,7 @@ from dclasso import DCLasso, pic_penalty
 from dclasso.dc_lasso import loss
 
 import utils as u
-from lambda_control_utils import (
+from lambda_control.lambda_control_utils import (
     build_iterator,
     fdr,
     perform_alpha_computations,
@@ -180,7 +180,19 @@ for pen, opt, lam in iterable:
         R__,
         N1__,
     ) = perform_optimisation_with_parameters(
-        dl, pen, opt, lam, alpha_list, d, causal_feats
+        dl,
+        pen,
+        opt,
+        lam,
+        alpha_list,
+        d,
+        causal_feats,
+        key,
+        max_epoch,
+        eps_stop,
+        opt_kwargs,
+        Cst,
+        penalty_kwargs,
     )
     penalties_parameter += [pen] * len(alpha_list)
     optimizers__parameter += [opt] * len(alpha_list)
