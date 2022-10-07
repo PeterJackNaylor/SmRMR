@@ -109,7 +109,7 @@ process plot {
             tuple path(PERFORMANCE), path("*.png"), path("*.html")
 
         script:
-            py = file("src/templates/benchmark/plot.py")
+            py = file("src/templates/benchmark/line_plot.py")
             """
             python $py $PERFORMANCE
             """
