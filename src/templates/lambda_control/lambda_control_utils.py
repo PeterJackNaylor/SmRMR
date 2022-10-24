@@ -17,12 +17,16 @@ def fdr(causal_features, selected_features):
         return fdr
 
 
-def perform_alpha_computations(alpha_list, wjs, screen_indices, causal_features):
+def perform_alpha_computations(
+    alpha_list, wjs, screen_indices, causal_features, conservative
+):
     run_fdr = []
     run_var_selected = []
     for alpha in alpha_list:
 
-        selected_features, _, _ = alpha_threshold(alpha, wjs, screen_indices)
+        selected_features, _, _ = alpha_threshold(
+            alpha, wjs, screen_indices, conservative=conservative
+        )
         selected_features = list(np.array(selected_features))
         run_fdr.append(fdr(causal_features, selected_features))
         run_var_selected.append(selected_features)
@@ -43,6 +47,7 @@ def perform_optimisation_with_parameters(
     opt_kwargs,
     Cst,
     penalty_kwargs,
+    conservative,
 ):
     penalty_kwargs = {"name": pen, "lamb": lam}
     loss_fn = partial(
@@ -72,7 +77,7 @@ def perform_optimisation_with_parameters(
     )
     wjs = beta[:d] - beta[d:]
     fdr_l, selected_l = perform_alpha_computations(
-        alpha_list, wjs, dclasso_main.screen_indices_, causal_features
+        alpha_list, wjs, dclasso_main.screen_indices_, causal_features, conservative
     )
 
     loss_fn = partial(

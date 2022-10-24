@@ -64,6 +64,8 @@ X_val = np.asarray(X_val)
 causal_feats = np.load("${CAUSAL_NPZ}")
 causal_feats = list(causal_feats["featnames"][causal_feats["selected"]])
 
+conservative = len(causal_feats) >= 5
+
 
 # Hyper-parameters
 ############################
@@ -116,6 +118,7 @@ dl.fit(
     max_epoch=max_epoch,
     penalty_kwargs=penalty_kwargs,
     optimizer=optimizer[0],
+    conservative=conservative,
 )
 loss_fn = partial(
     loss,
@@ -153,7 +156,7 @@ loss_fn = partial(
 loss_valid__ = float(loss_fn(dl.beta_[:d]))
 
 fdr__, selected__ = perform_alpha_computations(
-    alpha_list[1:], dl.wjs_, dl.screen_indices_, causal_feats
+    alpha_list[1:], dl.wjs_, dl.screen_indices_, causal_feats, conservative
 )
 
 penalties_parameter += [penalty_init] * len(alpha_list)
@@ -193,6 +196,7 @@ for pen, opt, lam in iterable:
         opt_kwargs,
         Cst,
         penalty_kwargs,
+        conservative,
     )
     penalties_parameter += [pen] * len(alpha_list)
     optimizers__parameter += [opt] * len(alpha_list)

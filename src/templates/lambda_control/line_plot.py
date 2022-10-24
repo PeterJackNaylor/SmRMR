@@ -3,6 +3,7 @@ from utils_plot import read_and_prep_data
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import numpy as np
+import ast
 
 
 def unique_double(df, x_var, y_var):
@@ -15,6 +16,7 @@ def unique_double(df, x_var, y_var):
 maping_col = {
     "PC": "#a6cee3",
     "HSIC (gaussian)": "#b2df8a",
+    "HSIC (linear)": "#fdbf6f",
     "HSIC (inverse-M)": "#fb9a99",
 }
 
@@ -82,6 +84,8 @@ def main():
     n_p = unique_double(table, "n", "p")
 
     fdr_alpha = make_subplots(rows=len(datasets), cols=len(n_p))
+    n_features = make_subplots(rows=len(datasets), cols=len(n_p))
+    t_features = make_subplots(rows=len(datasets), cols=len(n_p))
 
     for i, data in enumerate(datasets):
         for j, (n, p) in enumerate(n_p):
@@ -97,13 +101,40 @@ def main():
                 last_i=len(datasets),
                 log_scale=True,
             )
+            table_data = table_data[table_data["alpha"].round(2) == 0.3]
+            table_data["Nselected"] = table_data.selected.apply(
+                lambda x: len(ast.literal_eval(x))
+            )
 
-    fdr_alpha.write_image(
-        "fdr_alpha.png",
-        width=1350,
-        height=900,
-    )
+            add_curve_plot(
+                n_features,
+                table_data,
+                "lamb",
+                "Nselected",
+                i,
+                j,
+                last_i=len(datasets),
+                log_scale=True,
+            )
+            table_data["TrueSelected"] = (
+                table_data["Nselected"] - table_data["value"] * table_data["Nselected"]
+            )
+            add_curve_plot(
+                t_features,
+                table_data,
+                "lamb",
+                "TrueSelected",
+                i,
+                j,
+                last_i=len(datasets),
+                log_scale=True,
+            )
+    fdr_alpha.write_image("fdr_alpha.png", width=1350, height=900)
     fdr_alpha.write_html("fdr_alpha.html")
+    n_features.write_image("n_selected.png", width=1350, height=900)
+    n_features.write_html("n_selected.html")
+    t_features.write_image("true_features.png", width=1350, height=900)
+    t_features.write_html("true_features.html")
 
 
 if __name__ == "__main__":
