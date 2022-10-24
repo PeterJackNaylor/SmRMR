@@ -100,6 +100,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             "transition_steps": 100,
             "decay_rate": 0.99,
         },
+        conservative: bool = True,
     ):
 
         key = random.PRNGKey(seed)
@@ -128,6 +129,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
+
         if data_recycling:
             X1_tild = np.concatenate([X1, X1], axis=1)
             X2_tild = np.concatenate([X2, Xhat], axis=1)
@@ -136,6 +138,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         else:
             Xs = np.concatenate([X2, Xhat], axis=1)
             ys = y2
+
         self.beta_, value = self.minimize_loss_function(
             Xs,
             ys,
@@ -149,13 +152,13 @@ class DCLasso(BaseEstimator, TransformerMixin):
         )
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
-
         alpha_thres = alpha_threshold(
             self.alpha,
             self.wjs_,
             self.screen_indices_,
             hard_alpha=self.hard_alpha,
             alpha_increase=self.alpha_increase,
+            conservative=conservative,
             verbose=self.verbose,
         )
 
@@ -210,6 +213,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             [npt.ArrayLike, npt.ArrayLike, npt.ArrayLike, npt.ArrayLike], float
         ] = None,
         refit: bool = True,
+        conservative: bool = True,
     ):
 
         key = random.PRNGKey(seed)
@@ -313,6 +317,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
                     hard_alpha=self.hard_alpha,
                     alpha_increase=self.alpha_increase,
                     return_alpha=True,
+                    conservative=conservative,
                     verbose=self.verbose,
                 )
                 name = (
@@ -561,7 +566,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         else:
             if self.verbose:
                 print("Only non-zero screening")
-
+            # screened_indices = np.arange(p)
             screened_indices = self.feature_feature_screen_nonzeros(
                 X, y, d, penalty, key
             )
@@ -613,6 +618,7 @@ def alpha_threshold(
     alpha_increase=0.05,
     return_alpha=False,
     verbose=True,
+    conservative=True,
 ):
     """
     Computes the selected features with respect to alpha.
@@ -630,10 +636,14 @@ def alpha_threshold(
     init_alpha = alpha
     n_out = []
     while not n_out and alpha < 1.0:
-        alpha_indices_, t_alpha_ = threshold_alpha(wjs, indices, alpha, verbose)
+        alpha_indices_, t_alpha_ = threshold_alpha(
+            wjs, indices, alpha, conservative, verbose
+        )
         n_features_out_ = len(alpha_indices_)
-        alpha += alpha_increase
+
         n_out = list(alpha_indices_)
+        if not n_out:
+            alpha += alpha_increase
         if hard_alpha:
             break
 
@@ -796,7 +806,7 @@ def compute_distance_for_am(X, y, **kwargs):
     return Kx, Ky
 
 
-def threshold_alpha(Ws, w_indice, alpha, verbose=True):
+def threshold_alpha(Ws, w_indice, alpha, conservative=True, verbose=True):
     """
     Computes the set defined by equation 3.8
     Parameters
@@ -812,10 +822,13 @@ def threshold_alpha(Ws, w_indice, alpha, verbose=True):
     t_alpha : float, which is the threshold used to select the set of active
     features.
     """
+
     ts = np.sort(abs(Ws))
 
+    add = 1 if conservative else 0
+
     def fraction_3_6(t):
-        num = (Ws <= -abs(t)).sum() + 1
+        num = (Ws <= -abs(t)).sum() + add
         den = max((Ws >= abs(t)).sum(), 1)
         return num / den
 
@@ -831,7 +844,6 @@ def threshold_alpha(Ws, w_indice, alpha, verbose=True):
     else:
         t_alpha_min = min(ts[t_alpha])
     indices = w_indice[Ws >= t_alpha_min]
-
     ########################################
     # For debugging purposes
     # def numerator(t):
