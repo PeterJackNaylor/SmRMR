@@ -41,7 +41,10 @@ process plot {
         tuple path(FILE), path("loss_train"), path("loss_validation"), path("alpha_fdr"), path("fdr_control_isoline"), path("selected_features"), path("R_constraint")
 
     script:
-        template "lambda_control/plot.py"
+        py = file("src/templates/lambda_control/plot.py")
+        """
+        python $py
+        """
 }
 
 
