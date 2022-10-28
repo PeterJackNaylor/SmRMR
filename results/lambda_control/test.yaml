@@ -1,11 +1,11 @@
 out: results/lambda_control
 config_path: results/lambda_control/test.yaml
-repeat: 20
+repeat: 2
 n1: 0.3
-simulation_np: [[200, 100], [100, 500], [500, 5000]]
-validation_samples: [[100, 100], [100, 500], [100, 5000]]
+simulation_np: [[200, 100]] #, [100, 500], [500, 5000]]
+validation_samples: [[100, 100]] #, [100, 500], [100, 5000]]
 measure_stat:
-- "PC"
+# - "PC"
 - "HSIC"
 kernel: ["gaussian", "linear"]
 penalty: ["l1", "scad", "mcp", "None"]
@@ -14,8 +14,8 @@ lambda: [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1., 2., 5., 10.]
 simulation_models:
 - 'linear_00'
 - 'linear_0'
-- 'linear_1'
-- 'linear_2'
+# - 'linear_1'
+# - 'linear_2'
 - 'categorical_0'
-- 'categorical_1'
-- 'categorical_2'
+# - 'categorical_1'
+# - 'categorical_2'
