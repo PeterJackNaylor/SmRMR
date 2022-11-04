@@ -150,7 +150,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
             eps_stop,
             key,
         )
-
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
         alpha_thres = alpha_threshold(
             self.alpha,
