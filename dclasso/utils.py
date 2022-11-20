@@ -99,7 +99,52 @@ def orthonormalize_q(X):
     return Q
 
 
-def get_equi_features(X, key, eps=1e-8):
+def shift_until_PSD(M, tol):
+    """Add the identity until a p x p matrix M has eigenvalues of at least tol"""
+    p = M.shape[0]
+    mineig = float(eigsh(np.array(M), k=1, which="SA")[0].squeeze())
+    if mineig < tol:
+        M = M + (tol - mineig) * np.eye(p)
+    return M
+
+
+def scale_until_PSD(Sigma, S, tol, num_iter=10):
+    """
+    Perform a binary search to find the largest ``gamma`` such that the minimum
+    eigenvalue of ``2*Sigma - gamma*S`` is at least ``tol``.
+
+    Returns
+    -------
+    gamma * S : np.ndarray
+        See description.
+    gamma : float
+        See description
+    """
+
+    # Raise value error if S is not PSD
+    try:
+        jnp.linalg.cholesky(S)
+    except jnp.linalg.LinAlgError:
+        S = shift_until_PSD(S, tol)
+
+    # Binary search to find minimum gamma
+    lower_bound = 0  # max feasible gamma
+    upper_bound = 1  # min infeasible gamma
+    for j in range(num_iter):
+        gamma = (lower_bound + upper_bound) / 2
+        V = 2 * Sigma - gamma * S
+        try:
+            jnp.linalg.cholesky(V - tol * np.eye(V.shape[0]))
+            lower_bound = gamma
+        except jnp.linalg.LinAlgError:
+            upper_bound = gamma
+    # Scale S properly, be a bit more conservative
+    S = (lower_bound - tol * 100) * S
+
+    return S, lower_bound
+
+
+def get_equi_features(X, key, eps=1e-5):
     """
     Builds the knockoff variables with the equicorrelated procedure.
     Code taken from https://github.com/TwoLittle/PC_Screen
@@ -110,24 +155,38 @@ def get_equi_features(X, key, eps=1e-8):
     Xstd = X / scale
     sigma = Xstd.T.dot(Xstd)
     lambd_min = float(eigsh(np.array(sigma), k=1, which="SA")[0].squeeze())
-    sigma_inv = jnp.linalg.inv(sigma)
 
+    # sigma_inv = jnp.linalg.inv(sigma)
+    sigma_inv = jnp.linalg.inv(sigma * jnp.power(scale, 2))
     sj = min([1.0, 2.0 * lambd_min])
-    print("eigen value", sj)
     if sj <= 0:
         sj = eps
     # why does this line make A invertible...
-    sj = jnp.array(sj - 0.00001)
-
+    # sj = jnp.array(sj - 0.00001)
+    sj = jnp.array(sj)
     mat_s = jnp.diag(np.repeat(sj, p))
-    A = 2 * mat_s - sj * sj * sigma_inv
+
+    # added line
+    mat_s, _ = scale_until_PSD(sigma, mat_s, eps)
+
+    # mat_s =  jnp.array(mat_s - eps)
+    # added line
+    mat_s = mat_s * jnp.power(scale, 2)
+
+    # A = 2 * mat_s - sj * sj * sigma_inv
+    A = 2 * mat_s - np.dot(mat_s, np.dot(sigma_inv, mat_s))
+
     C = jnp.linalg.cholesky(A).T
 
-    Xn = jax.random.normal(key, (n, p))
+    # Xn = jax.random.normal(key, (n, p))
 
-    XX = jnp.hstack([Xstd, Xn])
+    # XX = jnp.hstack([Xstd, Xn])
+    XX = jnp.hstack([X, jnp.zeros((n, p))])
+
     # XXo = orthonormalize(XX)
     XXo = orthonormalize_qr(XX)
     U = XXo[:, p : (2 * p)]
-    Xnew = jnp.dot(Xstd, jnp.eye(p) - sigma_inv * sj) + jnp.dot(U, C)
+
+    # Xnew = jnp.dot(Xstd, jnp.eye(p) - sigma_inv * sj) + jnp.dot(U, C)
+    Xnew = jnp.dot(X, jnp.eye(p) - np.dot(sigma_inv, mat_s)) + jnp.dot(U, C)
     return Xnew
