@@ -108,7 +108,7 @@ def shift_until_PSD(M, tol):
     return M
 
 
-def scale_until_PSD(Sigma, S, tol, num_iter=10):
+def scale_until_PSD_and_cho(S, A_1, num_iter=10):
     """
     Perform a binary search to find the largest ``gamma`` such that the minimum
     eigenvalue of ``2*Sigma - gamma*S`` is at least ``tol``.
@@ -122,26 +122,21 @@ def scale_until_PSD(Sigma, S, tol, num_iter=10):
     """
 
     # Raise value error if S is not PSD
-    try:
-        jnp.linalg.cholesky(S)
-    except jnp.linalg.LinAlgError:
-        S = shift_until_PSD(S, tol)
-
     # Binary search to find minimum gamma
     lower_bound = 0  # max feasible gamma
-    upper_bound = 1  # min infeasible gamma
+    upper_bound = 2  # min infeasible gamma
     for j in range(num_iter):
         gamma = (lower_bound + upper_bound) / 2
-        V = 2 * Sigma - gamma * S
-        try:
-            jnp.linalg.cholesky(V - tol * np.eye(V.shape[0]))
-            lower_bound = gamma
-        except jnp.linalg.LinAlgError:
+        A = jnp.linalg.cholesky(2 * S - gamma * A_1)
+        if jnp.isnan(A).any():
             upper_bound = gamma
+        else:
+            good_gamma = gamma
+            lower_bound = gamma
     # Scale S properly, be a bit more conservative
-    S = (lower_bound - tol * 100) * S
-
-    return S, lower_bound
+    V = 2 * S - good_gamma * A_1
+    A = jnp.linalg.cholesky(V).T
+    return A
 
 
 def get_equi_features(X, key, eps=1e-5):
@@ -167,16 +162,17 @@ def get_equi_features(X, key, eps=1e-5):
     mat_s = jnp.diag(np.repeat(sj, p))
 
     # added line
-    mat_s, _ = scale_until_PSD(sigma, mat_s, eps)
-
-    # mat_s =  jnp.array(mat_s - eps)
-    # added line
     mat_s = mat_s * jnp.power(scale, 2)
 
-    # A = 2 * mat_s - sj * sj * sigma_inv
-    A = 2 * mat_s - np.dot(mat_s, np.dot(sigma_inv, mat_s))
+    # added line
+    A_1 = np.dot(mat_s, np.dot(sigma_inv, mat_s))
+    C = scale_until_PSD_and_cho(mat_s, A_1)
 
-    C = jnp.linalg.cholesky(A).T
+    # mat_s =  jnp.array(mat_s - eps)
+
+    # A = 2 * mat_s - sj * sj * sigma_inv
+
+    # C = jnp.linalg.cholesky(A).T
 
     # Xn = jax.random.normal(key, (n, p))
 
