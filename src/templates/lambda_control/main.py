@@ -19,6 +19,7 @@ import jax.numpy as jnp
 from sklearn.utils.validation import check_X_y
 from scipy.sparse.linalg import eigsh
 
+
 try:
     from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
 except ImportError:

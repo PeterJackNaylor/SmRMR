@@ -127,7 +127,7 @@ class dcor(AM):
         return dcor_
 
 
-distance_corr = dcor()
+distance_corr = dcor(batch_size=100)
 
 
 def test_positivity():
