@@ -150,6 +150,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             eps_stop,
             key,
         )
+
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
         alpha_thres = alpha_threshold(
             self.alpha,
@@ -171,6 +172,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
     def minimize_loss_function(
         self, x, y, pen_kwargs, optimizer, init, opt_kwargs, max_epoch, eps_stop, key
     ):
+        if self.verbose:
+            print("Starting to compute the loss")
         # Penalty/Loss setting
         loss_fn = self.compute_loss_fn(x, y, pen_kwargs)
         step_function, opt_state, beta = self.setup_optimisation(
@@ -183,6 +186,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
             self.Dxy,
             opt_kwargs,
         )
+        if self.verbose:
+            print("Starting to optimise the loss")
         beta, value = minimize_loss(
             step_function,
             opt_state,
@@ -191,6 +196,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
             eps_stop,
             verbose=self.verbose,
         )
+        if self.verbose:
+            print("The loss has been optimised")
         return beta, value
 
     def cv_fit(
@@ -430,6 +437,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         return step_function, opt_state, beta
 
     def initialisation(self, p, key, init, Dxx, Dxy):
+        if self.verbose:
+            print(f"Starting initialisation: {init}")
         match init:
             case "random":
                 beta = random.uniform(
@@ -444,6 +453,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
                     eps *= 10
                 beta = np.matmul(Dxx_minus_1, Dxy)
                 beta = pos_proj(beta)
+        if self.verbose:
+            print(f"Initialisation {init} done")
         return beta
 
     def set_optimizer(self, opt, loss_fn, beta, opt_kwargs):
