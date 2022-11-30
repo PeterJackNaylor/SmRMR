@@ -48,9 +48,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        alpha: float = 1.0,
-        measure_stat: str = "PC",
-        kernel: str = "linear",
+        alpha: float = 0.2,
+        measure_stat: str = "HSIC",
+        kernel: str = "gaussian",
         ms_kwargs: dict = {},
         normalise_input: bool = True,
         hard_alpha: bool = True,
@@ -89,12 +89,12 @@ class DCLasso(BaseEstimator, TransformerMixin):
         n1: float,
         d: int = None,
         seed: int = 42,
-        max_epoch: int = 151,
+        max_epoch: int = 301,
         eps_stop: float = 1e-8,
         init="from_convex_solve",
         data_recycling: bool = True,
-        optimizer: str = "SGD",
-        penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
+        optimizer: str = "adam",
+        penalty_kwargs: dict = {"name": "l1", "lamb": 0.5},
         opt_kwargs: dict = {
             "init_value": 0.001,
             "transition_steps": 100,
@@ -102,7 +102,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         },
         conservative: bool = True,
     ):
-
+        self.verbose = True
         key = random.PRNGKey(seed)
 
         X, y = check_X_y(X, y)
