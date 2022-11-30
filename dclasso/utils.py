@@ -99,7 +99,47 @@ def orthonormalize_q(X):
     return Q
 
 
-def get_equi_features(X, key, eps=1e-8):
+def shift_until_PSD(M, tol):
+    """Add the identity until a p x p matrix M has eigenvalues of at least tol"""
+    p = M.shape[0]
+    mineig = float(eigsh(np.array(M), k=1, which="SA")[0].squeeze())
+    if mineig < tol:
+        M = M + (tol - mineig) * np.eye(p)
+    return M
+
+
+def scale_until_PSD_and_cho(S, A_1, num_iter=10):
+    """
+    Perform a binary search to find the largest ``gamma`` such that the minimum
+    eigenvalue of ``2*Sigma - gamma*S`` is at least ``tol``.
+
+    Returns
+    -------
+    gamma * S : np.ndarray
+        See description.
+    gamma : float
+        See description
+    """
+
+    # Raise value error if S is not PSD
+    # Binary search to find minimum gamma
+    lower_bound = 0  # max feasible gamma
+    upper_bound = 2  # min infeasible gamma
+    for j in range(num_iter):
+        gamma = (lower_bound + upper_bound) / 2
+        A = jnp.linalg.cholesky(2 * S - gamma * A_1)
+        if jnp.isnan(A).any():
+            upper_bound = gamma
+        else:
+            good_gamma = gamma
+            lower_bound = gamma
+    # Scale S properly, be a bit more conservative
+    V = 2 * S - good_gamma * A_1
+    A = jnp.linalg.cholesky(V).T
+    return A
+
+
+def get_equi_features(X, key, eps=1e-5):
     """
     Builds the knockoff variables with the equicorrelated procedure.
     Code taken from https://github.com/TwoLittle/PC_Screen
@@ -110,24 +150,39 @@ def get_equi_features(X, key, eps=1e-8):
     Xstd = X / scale
     sigma = Xstd.T.dot(Xstd)
     lambd_min = float(eigsh(np.array(sigma), k=1, which="SA")[0].squeeze())
-    sigma_inv = jnp.linalg.inv(sigma)
 
+    # sigma_inv = jnp.linalg.inv(sigma)
+    sigma_inv = jnp.linalg.inv(sigma * jnp.power(scale, 2))
     sj = min([1.0, 2.0 * lambd_min])
-    print("eigen value", sj)
     if sj <= 0:
         sj = eps
     # why does this line make A invertible...
-    sj = jnp.array(sj - 0.00001)
-
+    # sj = jnp.array(sj - 0.00001)
+    sj = jnp.array(sj)
     mat_s = jnp.diag(np.repeat(sj, p))
-    A = 2 * mat_s - sj * sj * sigma_inv
-    C = jnp.linalg.cholesky(A).T
 
-    Xn = jax.random.normal(key, (n, p))
+    # added line
+    mat_s = mat_s * jnp.power(scale, 2)
 
-    XX = jnp.hstack([Xstd, Xn])
+    # added line
+    A_1 = np.dot(mat_s, np.dot(sigma_inv, mat_s))
+    C = scale_until_PSD_and_cho(mat_s, A_1)
+
+    # mat_s =  jnp.array(mat_s - eps)
+
+    # A = 2 * mat_s - sj * sj * sigma_inv
+
+    # C = jnp.linalg.cholesky(A).T
+
+    # Xn = jax.random.normal(key, (n, p))
+
+    # XX = jnp.hstack([Xstd, Xn])
+    XX = jnp.hstack([X, jnp.zeros((n, p))])
+
     # XXo = orthonormalize(XX)
     XXo = orthonormalize_qr(XX)
     U = XXo[:, p : (2 * p)]
-    Xnew = jnp.dot(Xstd, jnp.eye(p) - sigma_inv * sj) + jnp.dot(U, C)
+
+    # Xnew = jnp.dot(Xstd, jnp.eye(p) - sigma_inv * sj) + jnp.dot(U, C)
+    Xnew = jnp.dot(X, jnp.eye(p) - np.dot(sigma_inv, mat_s)) + jnp.dot(U, C)
     return Xnew

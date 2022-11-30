@@ -25,7 +25,7 @@ def perform_alpha_computations(
     for alpha in alpha_list:
 
         selected_features, _, _ = alpha_threshold(
-            alpha, wjs, screen_indices, conservative=conservative
+            alpha, wjs, screen_indices, conservative=conservative, verbose=False
         )
         selected_features = list(np.array(selected_features))
         run_fdr.append(fdr(causal_features, selected_features))
