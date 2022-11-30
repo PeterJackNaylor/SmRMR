@@ -133,6 +133,8 @@ def scale_until_PSD_and_cho(S, A_1, num_iter=10):
         else:
             good_gamma = gamma
             lower_bound = gamma
+            if good_gamma == 1:
+                break
     # Scale S properly, be a bit more conservative
     V = 2 * S - good_gamma * A_1
     A = jnp.linalg.cholesky(V).T

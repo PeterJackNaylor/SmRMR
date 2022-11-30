@@ -23,6 +23,9 @@ from .utils import (
 
 from optax._src.base import GradientTransformation
 
+# General comments
+# - Private methods should be named __method_name
+
 available_am = ["PC", "DC", "TR", "HSIC", "cMMD", "pearson_correlation"]
 kernel_am = ["HSIC", "cMMD"]
 available_kernels = [
@@ -48,9 +51,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        alpha: float = 1.0,
-        measure_stat: str = "PC",
-        kernel: str = "linear",
+        alpha: float = 0.2,
+        measure_stat: str = "HSIC",
+        kernel: str = "gaussian",
         ms_kwargs: dict = {},
         normalise_input: bool = True,
         hard_alpha: bool = True,
@@ -89,12 +92,12 @@ class DCLasso(BaseEstimator, TransformerMixin):
         n1: float,
         d: int = None,
         seed: int = 42,
-        max_epoch: int = 151,
+        max_epoch: int = 301,
         eps_stop: float = 1e-8,
         init="from_convex_solve",
         data_recycling: bool = True,
-        optimizer: str = "SGD",
-        penalty_kwargs: dict = {"name": "None", "lamb": 0.5},
+        optimizer: str = "adam",
+        penalty_kwargs: dict = {"name": "l1", "lamb": 0.5},
         opt_kwargs: dict = {
             "init_value": 0.001,
             "transition_steps": 100,
@@ -102,7 +105,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         },
         conservative: bool = True,
     ):
-
+        self.verbose = True
         key = random.PRNGKey(seed)
 
         X, y = check_X_y(X, y)
@@ -130,7 +133,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
 
+        # TODO is there any downside to always do data recycling?
         if data_recycling:
+            # TODO why are we not computing the knockoffs for X1?
             X1_tild = np.concatenate([X1, X1], axis=1)
             X2_tild = np.concatenate([X2, Xhat], axis=1)
             Xs = np.concatenate([X1_tild, X2_tild], axis=0)
@@ -559,15 +564,20 @@ class DCLasso(BaseEstimator, TransformerMixin):
             if self.verbose:
                 print("Starting screening")
 
+            # randomly split the samples
             s1, s2 = generate_random_sets(n, n1, key)
             X1, y1 = X[s1, :], y[s1]
             X2, y2 = X[s2, :], y[s2]
+
+            # if too many features, select the top K = 4 * d
+            # TODO rename d=? and p=n_features?
             screened_indices = np.arange(p)
             if 4 * d < p:
                 screened_indices = self.marginal_screen(X1, y1, 4 * d)
                 X1 = X1[:, screened_indices]
                 X2 = X2[:, screened_indices]
 
+            # TODO what does this do?
             screened_indices_2 = self.feature_feature_screen(X2, y2, d, penalty, key)
             X1 = X1[:, screened_indices_2]
             X2 = X2[:, screened_indices_2]
@@ -577,6 +587,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             if self.verbose:
                 print("Only non-zero screening")
             # screened_indices = np.arange(p)
+            # TODO same as above
             screened_indices = self.feature_feature_screen_nonzeros(
                 X, y, d, penalty, key
             )
@@ -586,6 +597,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
             X1, y1 = np.zeros(shape=(0, d)), np.zeros(shape=(0,))
             X2, y2 = X, y
+
         return X2, y2, X1, y1, screened_indices, d
 
     def compute_loss_fn(self, X, y, penalty_kwargs):
@@ -703,18 +715,24 @@ def loss(b, Dxy, Dxx, penalty_func):
     return xy_term + xx_term + penalty_func(b)
 
 
-def minimize_loss(step_function, opt_state, beta, max_epoch, eps_stop, verbose):
+def minimize_loss(
+    step_function, opt_state, beta, max_epoch, eps_stop, patience=5, verbose=False
+):
     # error_tmp = []
     prev = np.inf
+    i = 0
     # Minimizing loss function
     range_epoch = trange(max_epoch) if verbose else range(max_epoch)
     for _ in range_epoch:
         value, beta, opt_state = step_function(beta, opt_state)
         # error_tmp.append(float(value))
-        if abs(value - prev) < eps_stop:
-            break
+        if abs(value - prev) < eps_stop / patience:
+            i += 1
+            if i == patience:
+                break
         else:
-            prev = value
+            i = 0
+        prev = value
     return beta, value
 
 
