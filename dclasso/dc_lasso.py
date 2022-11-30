@@ -715,18 +715,24 @@ def loss(b, Dxy, Dxx, penalty_func):
     return xy_term + xx_term + penalty_func(b)
 
 
-def minimize_loss(step_function, opt_state, beta, max_epoch, eps_stop, verbose):
+def minimize_loss(
+    step_function, opt_state, beta, max_epoch, eps_stop, patience=5, verbose=False
+):
     # error_tmp = []
     prev = np.inf
+    i = 0
     # Minimizing loss function
     range_epoch = trange(max_epoch) if verbose else range(max_epoch)
     for _ in range_epoch:
         value, beta, opt_state = step_function(beta, opt_state)
         # error_tmp.append(float(value))
-        if abs(value - prev) < eps_stop:
-            break
+        if abs(value - prev) < eps_stop / patience:
+            i += 1
+            if i == patience:
+                break
         else:
-            prev = value
+            i = 0
+        prev = value
     return beta, value
 
 

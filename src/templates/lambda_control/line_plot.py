@@ -102,7 +102,7 @@ def main():
                 last_i=len(datasets),
                 log_scale=True,
             )
-            table_data = table_data[table_data["alpha"].round(2) == 0.3]
+            table_data = table_data[table_data["alpha"].round(2) == 0.1]
             table_data["Nselected"] = table_data.selected.apply(
                 lambda x: len(ast.literal_eval(x))
             )
