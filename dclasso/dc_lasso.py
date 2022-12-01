@@ -133,9 +133,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
 
-        # TODO is there any downside to always do data recycling?
         if data_recycling:
-            # TODO why are we not computing the knockoffs for X1?
             X1_tild = np.concatenate([X1, X1], axis=1)
             X2_tild = np.concatenate([X2, Xhat], axis=1)
             Xs = np.concatenate([X1_tild, X2_tild], axis=0)
