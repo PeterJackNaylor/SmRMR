@@ -32,10 +32,10 @@ def add_curve_plot(fig, df, x_var, y_var, i, j, last_i=-1, log_scale=False):
 
     x_y_groups = (
         df.groupby(["name", "penalty", x_var])
-        .agg({y_var: ["mean", "std"]})
+        .agg({y_var: ["mean", "std", "count"]})
         .reset_index()
     )
-    x_y_groups.columns = ["name", "penalty", "lamb", "mean", "std"]
+    x_y_groups.columns = ["name", "penalty", "lamb", "mean", "std", "count"]
 
     showLegend = i == j == 0
 
@@ -48,7 +48,7 @@ def add_curve_plot(fig, df, x_var, y_var, i, j, last_i=-1, log_scale=False):
             mode="lines+markers",
             error_y=dict(
                 type="data",  # value of error bar given in data coordinates
-                array=tmp_groups["std"],
+                array=tmp_groups["std"] * 1.96 / tmp_groups["count"],
                 visible=True,
             ),
             line=dict(color=maping_col[name], width=4),
@@ -91,6 +91,7 @@ def main():
         for j, (n, p) in enumerate(n_p):
             table_data = table[(table.run == data) & (table.n == n) & (table.p == p)]
 
+            table_data = table_data[table_data["alpha"].round(2) == 0.1]
             table_data["FDR-alpha"] = table_data["value"] - table_data["alpha"]
             add_curve_plot(
                 fdr_alpha,
@@ -102,7 +103,6 @@ def main():
                 last_i=len(datasets),
                 log_scale=True,
             )
-            table_data = table_data[table_data["alpha"].round(2) == 0.3]
             table_data["Nselected"] = table_data.selected.apply(
                 lambda x: len(ast.literal_eval(x))
             )

@@ -37,7 +37,7 @@ from lambda_control.lambda_control_utils import (
 
 key = random.PRNGKey(42)
 Cst = 1.5
-max_epoch = 300
+max_epoch = 1500
 eps_stop = 1e-8
 opt_kwargs = {
     "init_value": 0.001,
@@ -64,7 +64,7 @@ X_val = np.asarray(X_val)
 causal_feats = np.load("${CAUSAL_NPZ}")
 causal_feats = list(causal_feats["featnames"][causal_feats["selected"]])
 
-conservative = len(causal_feats) >= 5
+conservative = True  # len(causal_feats) >= 5
 
 
 # Hyper-parameters
