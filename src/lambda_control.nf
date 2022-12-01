@@ -36,7 +36,7 @@ process plot {
         path FILE
 
     output:
-        tuple path(FILE), path("loss_train"), path("loss_validation"), path("alpha_fdr"), path("fdr_control_isoline"), path("selected_features"), path("R_constraint")
+        tuple path(FILE), path("fdr_alpha.*"), path("n_selected.*"), path("true_features.*")
 
     script:
         py = file("src/templates/lambda_control/line_plot.py")
