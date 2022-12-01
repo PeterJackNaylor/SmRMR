@@ -65,7 +65,7 @@ X_val = np.asarray(X_val)
 causal_feats = np.load("${CAUSAL_NPZ}")
 causal_feats = list(causal_feats["featnames"][causal_feats["selected"]])
 
-conservative = len(causal_feats) >= 5
+conservative = True  # len(causal_feats) >= 5
 
 
 # Hyper-parameters
