@@ -26,8 +26,8 @@ from optax._src.base import GradientTransformation
 # General comments
 # - Private methods should be named __method_name
 
-available_am = ["PC", "DC", "TR", "HSIC", "cMMD", "pearson_correlation"]
-kernel_am = ["HSIC", "cMMD"]
+available_ms = ["PC", "DC", "TR", "HSIC", "cMMD", "pearson_correlation"]
+kernel_ms = ["HSIC", "cMMD"]
 available_kernels = [
     "distance",
     "gaussian",
@@ -62,8 +62,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
     ) -> None:
         super().__init__()
         self.alpha = alpha
-        assert measure_stat in available_am, "measure_stat incorrect"
-        if measure_stat in kernel_am:
+        assert measure_stat in available_ms, "measure_stat incorrect"
+        if measure_stat in kernel_ms:
             assert kernel in available_kernels, "kernel incorrect"
         self.measure_stat = measure_stat
         self.kernel = kernel
@@ -76,7 +76,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
     def _compute_assoc(self, x, y=None, **kwargs):
 
         args = {}
-        if self.measure_stat in kernel_am:
+        if self.measure_stat in kernel_ms:
             args["kernel"] = self.kernel
 
         if self.normalise_input:
@@ -902,7 +902,7 @@ def gene_generators(param_grid, measure_stat, kernel):
         else:
             kernel = [kernel]
         for ms in measure_stat:
-            if ms in kernel_am:
+            if ms in kernel_ms:
                 for k in kernel:
                     yield (ms, k)
             else:

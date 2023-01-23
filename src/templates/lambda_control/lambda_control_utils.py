@@ -112,3 +112,12 @@ def build_iterator(penalty_list, optimizer_list, lambdas_list):
             else:
                 for lam in lambdas_list:
                     yield pen, opt, lam
+
+
+def build_ms_kern_iterator(ms_list, kernel_list):
+    for ms in ms_list:
+        if ms == "HSIC":
+            for kernel in kernel_list:
+                yield ms, kernel
+        else:
+            yield ms, ""

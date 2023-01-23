@@ -12,17 +12,16 @@ include { simulation_train_validation } from './nf_core/data_workflows.nf'
 
 process lambda_control {
 
-    tag "${TAG}),${AM},${KERNEL}"
+    tag "${TAG})" // ,${AM},${KERNEL}"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
-        each AM
-        each KERNEL
         val PARAMS_FILE
     output:
         path "performance.tsv"
+        path "performance_all.tsv"
 
-    when:
-        ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL))
+    // when:
+    //     ((AM in KERNEL_AM) || (KERNEL == FIRST_KERNEL))
 
     script:
         template "lambda_control/main.py"
@@ -56,6 +55,7 @@ workflow {
             params.validation_samples, params.repeat
         )
 
-        lambda_control(simulation_train_validation.out, params.measure_stat, params.kernel, config)
-        plot(lambda_control.out.collectFile(skip: 1, keepHeader: true))
+        lambda_control(simulation_train_validation.out, config)
+        plot(lambda_control.out[0].collectFile(skip: 1, keepHeader: true))
+        lambda_control.out[1].collectFile(name: "${params.out}/performance_all.tsv", skip: 1, keepHeader: true)
 }
