@@ -91,7 +91,7 @@ def main():
         for j, (n, p) in enumerate(n_p):
             table_data = table[(table.run == data) & (table.n == n) & (table.p == p)]
 
-            table_data = table_data[table_data["alpha"].round(2) == 0.1]
+            table_data = table_data[table_data["alpha"].round(2) == 0.45]
             table_data["FDR-alpha"] = table_data["value"] - table_data["alpha"]
             add_curve_plot(
                 fdr_alpha,

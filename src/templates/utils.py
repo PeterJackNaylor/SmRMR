@@ -126,6 +126,29 @@ def save_analysis_tsv(**kwargs):
         pd.DataFrame(metrics_dict).to_csv(FILE, sep="\t", index=False)
 
 
+def save_analysis_tsv_special(**kwargs):
+    metrics_dict = locals()["kwargs"]
+    if "alpha" in metrics_dict.keys() and "fdr_selected" in metrics_dict.keys():
+        fs = metrics_dict["fdr_selected"]
+        fdr = sum([fs[hp][0] for hp in metrics_dict["hp"]], [])
+        selected = sum([fs[hp][1] for hp in metrics_dict["hp"]], [])
+        alphas = metrics_dict["alpha"]
+        nalpha = alphas.shape[0]
+        n_hp = len(metrics_dict["hp"])
+        del metrics_dict["fdr_selected"], metrics_dict["alpha"]
+        for el in metrics_dict.keys():
+            if isinstance(metrics_dict[el], list):
+                metrics_dict[el] = [
+                    val for val in metrics_dict[el] for _ in range(nalpha)
+                ]
+        metrics_dict["alphas"] = np.tile(alphas, n_hp)
+        metrics_dict["fdr"] = fdr
+        metrics_dict["selected"] = selected
+
+    with open("performance_all.tsv", "w", newline="") as FILE:
+        pd.DataFrame(metrics_dict).to_csv(FILE, sep="\t", index=False)
+
+
 # Other functions
 ##########################
 def set_random_state(seed=0):
