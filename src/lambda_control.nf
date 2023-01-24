@@ -41,7 +41,7 @@ process plot {
         tuple path(FILE), path("fdr_alpha.*"), path("n_selected.*"), path("true_features.*")
 
     script:
-        py = file("src/templates/lambda_control/line_plot.py")
+        py = file("src/templates/lambda_control/fdr_control_plot.py")
         """
         python $py
         """
