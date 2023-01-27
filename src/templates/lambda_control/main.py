@@ -68,7 +68,7 @@ y_val = jnp.array(y_val)
 causal_feats = np.load("${CAUSAL_NPZ}")
 causal_feats = list(causal_feats["featnames"][causal_feats["selected"]])
 
-conservative = True  # len(causal_feats) >= 5
+conservative = len(causal_feats) >= 5
 
 
 # Hyper-parameters

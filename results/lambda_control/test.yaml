@@ -2,8 +2,8 @@ out: results/lambda_control
 config_path: results/lambda_control/test.yaml
 repeat: 100
 n1: 0.3
-simulation_np: [[200, 100], [100, 500]] #, [500, 5000]]
-validation_samples: [[100, 100], [100, 500]] #, [100, 5000]]
+simulation_np: [[200, 100], [100, 500], [500, 5000]]
+validation_samples: [[100, 100], [100, 500], [100, 5000]]
 measure_stat:
 - "HSIC"
 - "PC"
