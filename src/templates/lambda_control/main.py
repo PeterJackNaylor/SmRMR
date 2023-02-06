@@ -18,6 +18,7 @@ import numpy as np
 from jax import random
 import jax.numpy as jnp
 from sklearn.utils.validation import check_X_y
+from tqdm import tqdm
 
 # from scipy.sparse.linalg import eigsh
 
@@ -32,7 +33,9 @@ from dclasso.dc_lasso import loss
 import utils as u
 from lambda_control.lambda_control_utils import (
     build_iterator,
+    length_iterator,
     build_ms_kern_iterator,
+    length_ms_kern_iterator,
     # fdr,
     perform_alpha_computations,
     perform_optimisation_with_parameters,
@@ -109,7 +112,10 @@ fdr_selected_dict = {}
 # Process
 
 # One round to fit and get parameters
-for ms, kernel in ms_kernel_generator:
+tot_iterator = length_iterator(penalty_list, optimizer_list, lambda_list)
+tot_ms_kern = length_ms_kern_iterator(ms_list, kernel_list)
+
+for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
     iterable = build_iterator(penalty_list, optimizer_list, lambda_list)
     penalty_init, optimizer_init, lambda_init = next(iterable)
     penalty_kwargs = {"name": penalty_init, "lamb": lambda_init}
@@ -177,7 +183,7 @@ for ms, kernel in ms_kernel_generator:
 
     # Loop over parameters
 
-    for pen, opt, lam in iterable:
+    for pen, opt, lam in tqdm(iterable, total=tot_iterator):
         penalty_kwargs = {"name": pen, "lamb": lam}
         (
             fdr__,

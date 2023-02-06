@@ -1,13 +1,15 @@
 from functools import partial
 import numpy as np
-from dclasso.dc_lasso import alpha_threshold, loss, minimize_loss
+from dclasso.dc_lasso import loss
+from dclasso.utils import alpha_threshold, minimize_loss
 from dclasso import pic_penalty
 
 
-def fdr(causal_features, selected_features):
+def fdr(causal_features, selected_features, verbose=False):
 
-    if len(selected_features) == 0:
-        print("No feature selection process happened")
+    if not len(selected_features):
+        if verbose:
+            print("No feature selection process happened")
         return -1
     else:
         n_selected = len(selected_features)
@@ -121,3 +123,22 @@ def build_ms_kern_iterator(ms_list, kernel_list):
                 yield ms, kernel
         else:
             yield ms, ""
+
+
+def length_ms_kern_iterator(ms_list, kernel_list):
+    n = 0
+    if "HSIC" in ms_list:
+        n += len(kernel_list)
+        n += len(ms_list) - 1
+    else:
+        n += len(ms_list)
+    return n
+
+
+def length_iterator(penalty_list, optimizer_list, lambdas_list):
+    n_opt = len(optimizer_list)
+    if "None" in penalty_list:
+        n_pen_lamb = (len(penalty_list) - 1) * len(lambdas_list) + 1
+    else:
+        n_pen_lamb = len(penalty_list) * len(lambdas_list)
+    return n_opt * n_pen_lamb

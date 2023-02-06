@@ -1,28 +1,28 @@
 out: results/lambda_control
 config_path: results/lambda_control/nf_config.yaml
-repeat: 20
-simulation_np: [[100, 100], [100, 500], [100, 5000], [500, 100], [500, 500], [500, 5000], [1000, 5000]]
-validation_samples: [[100, 100], [100, 500], [100, 5000]]
+repeat: 5
+simulation_np: [[100, 100]] #, [100, 500], [100, 5000], [500, 100], [500, 500], [500, 5000], [1000, 5000]]
+validation_samples: [[100, 100]] #, [100, 500], [100, 5000]]
 n1: 0.3
 measure_stat:
-# - "DC"
 - "HSIC"
+- "DC"
 # - "PC"
 # - "pearson_correlation"
 kernel: ["linear", "gaussian"] #,  "tanh", "inverse-M", "laplacian"]
-penalty: ["l1", "None", "scad", "mcp"]
+penalty: ["l1", "None"] # , "scad", "mcp"]
 optimizer: ["adam"]
 lambda: [0.001] #, 0.01, 0.1, 0.5, 1.0, 5.0, 10.0, 100.]
 simulation_models:
 - 'categorical_1'
-- 'categorical_2'
-# - 'categorical_3'
-- 'linear_0'
-- 'linear_1'
-# - 'linear_2'
-# - 'linear_3'
-- 'nonlinear_1'
-- 'nonlinear_2'
+# - 'categorical_2'
+# # - 'categorical_3'
+# - 'linear_0'
+# - 'linear_1'
+# # - 'linear_2'
+# # - 'linear_3'
+# - 'nonlinear_1'
+# - 'nonlinear_2'
 # 'nonlinear_3'
 # - 'nonlinear_4'
 # - 'nonlinear_5'

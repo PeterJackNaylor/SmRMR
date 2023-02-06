@@ -33,9 +33,20 @@ def main():
     table.loc[table["value"] == -1, "value"] = 0
     table["N_selected"] = table.selected.apply(lambda row: count(row))
     table["void"] = table.N_selected.apply(lambda row: int(row > 0))
-    sub_table = (
-        table.groupby(["run", "n", "p", "alpha"]).mean().groupby(["run", "n", "p"])
-    )
+    run0, n0, p0, alpha0 = table.loc[0, ["run", "n", "p", "alpha"]]
+    n = table[
+        (table["run"] == run0)
+        & (table["n"] == n0)
+        & (table["p"] == p0)
+        & (table["alpha"] == alpha0)
+    ].shape[0]
+    sub_table = table.groupby(["run", "n", "p", "alpha"]).mean()
+
+    sub_table_sd = (table.groupby(["run", "n", "p", "alpha"]).std())[["value"]]
+    sub_table_sd.columns = ["sd_value"]
+    sub_table_sd = sub_table_sd["sd_value"] * 1.96 / n**0.5
+    sub_table = sub_table.join(sub_table_sd).groupby(["run", "n", "p"])
+
     # rows = table["run"].unique().tolist()
     rows = (
         table.groupby(["n", "p"])
@@ -58,14 +69,18 @@ def main():
     for run_n_p, t in sub_table:
         t = t.reset_index()
         name, row_pos = get_row_col_pos(run_n_p, rows)
-
         showlegend = row_pos == 1
         fig.add_trace(
             go.Scatter(
                 x=t["alpha"],
                 y=t["value"],
                 name=name,
-                marker=dict(size=16, color=data_color[name]),
+                error_y=dict(
+                    type="data",  # value of error bar given in data coordinates
+                    array=t["sd_value"],
+                    visible=True,
+                ),
+                marker=dict(size=8, color=data_color[name]),
                 legendgroup=name,
                 showlegend=showlegend,
             ),
