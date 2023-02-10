@@ -19,14 +19,6 @@ from jax import random
 import jax.numpy as jnp
 from sklearn.utils.validation import check_X_y
 from tqdm import tqdm
-
-# from scipy.sparse.linalg import eigsh
-
-# try:
-#     from scipy.sparse.linalg.eigen.arpack.arpack import ArpackNoConvergence
-# except ImportError:
-#     from scipy.sparse.linalg import ArpackNoConvergence
-
 from dclasso import DCLasso, pic_penalty
 from dclasso.dc_lasso import loss
 
@@ -98,15 +90,6 @@ loss_valids = []
 hp_parameter = []
 fdr_selected_dict = {}
 
-# Rs = []
-# N1s = []
-
-# fdr_alpha = []
-# selected_variables = []
-# penalties_parameter = []
-# optimizers__parameter = []
-# lambda_parameter = []
-# alpha_parameter = []
 # default parameters
 
 # Process
@@ -139,11 +122,6 @@ for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
     )
 
     loss_train__ = float(loss_fn(dl.beta_))
-    # selected_ = list(np.array(dl.alpha_indices_))
-    # fdr_ = fdr(causal_feats, selected_)
-
-    # R__ = float(Cst / penalty_kwargs["lamb"] * pic_penalty(penalty_kwargs)(dl.beta_))
-    # N1__ = np.abs(dl.beta_).sum()
 
     # Compute validation loss, but only compute X_val, Xhat and Dxx/Dxy once
     d = len(dl.screen_indices_)
@@ -169,18 +147,9 @@ for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
 
     hp = (penalty_init, optimizer_init, lambda_init, ms, kernel)
     hp_parameter += [hp]
-    loss_trains += [loss_train__]  # * len(alpha_list)
-    loss_valids += [loss_valid__]  # * len(alpha_list)
+    loss_trains += [loss_train__]
+    loss_valids += [loss_valid__]
     fdr_selected_dict[hp] = (fdr__, selected__)
-    # penalties_parameter += [] # * len(alpha_list)
-    # optimizers__parameter += [] # * len(alpha_list)
-    # lambda_parameter += [] # * len(alpha_list)
-    # alpha_parameter += list(alpha_list)
-    # Rs += [R__] * len(alpha_list)
-    # N1s += [N1__] * len(alpha_list)
-    # fdr_alpha += [fdr_] + fdr__
-    # selected_variables += [selected_] + selected__
-
     # Loop over parameters
 
     for pen, opt, lam in tqdm(iterable, total=tot_iterator):
@@ -210,17 +179,9 @@ for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
         )
         hp = (pen, opt, lam, ms, kernel)
         hp_parameter += [hp]
-        loss_trains += [loss_train__]  # * len(alpha_list)
-        loss_valids += [loss_valid__]  # * len(alpha_list)
+        loss_trains += [loss_train__]
+        loss_valids += [loss_valid__]
         fdr_selected_dict[hp] = (fdr__, selected__)
-        # Rs += [R__] * len(alpha_list)
-        # N1s += [N1__] * len(alpha_list)
-        # fdr_alpha += fdr__
-        # selected_variables += selected__
-        # penalties_parameter += [pen] # * len(alpha_list)
-        # optimizers__parameter += [opt] # * len(alpha_list)
-        # lambda_parameter += [lam] # * len(alpha_list)
-        # alpha_parameter += list(alpha_list)
 
 
 # Get the best model, i.e. minimizes the validation loss
@@ -230,13 +191,6 @@ loss_train_star = loss_trains[idx_star]
 loss_valid_star = loss_valids[idx_star]
 fdr_star, selected_star = fdr_selected_dict[hp_star]
 
-# Some theoritical results that depends only on the data
-# try:
-#     alpha2 = float(eigsh(np.array(dl.Dxx), k=1, which="SA")[0].squeeze())
-# except ArpackNoConvergence:
-#     alpha2 = 0
-# Save results
-############################
 
 simu, _ = "${TAG}".split("(")
 run_id = str(uuid.uuid4())
@@ -257,9 +211,6 @@ u.save_analysis_tsv(
     selected=selected_star,
     loss_train=loss_train_star,
     loss_valid=loss_valid_star,
-    # alpha2=alpha2,
-    # R=Rs,
-    # norm_1=N1s,
 )
 
 

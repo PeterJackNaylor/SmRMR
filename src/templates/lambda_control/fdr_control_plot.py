@@ -3,15 +3,21 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import numpy as np
 import ast
+import plotly.express as px
 
 data_color = {
-    "linear_0": "#7fc97f",
-    "linear_00": "#beaed4",
-    "linear_1": "#ffff99",
-    "linear_2": "#386cb0",
-    "categorical_0": "#fdc086",
-    "categorical_1": "#f0027f",
-    "categorical_2": "#bf5b17",
+    "linear_0": "#8dd3c7",
+    "linear_00": "#ffffb3",
+    "linear_1": "#bebada",
+    "linear_2": "#fb8072",
+    "categorical_0": "#80b1d3",
+    "categorical_1": "#fdb462",
+    "categorical_2": "#b3de69",
+    "nonlinear_1": "#fccde5",
+    "nonlinear_2": "#d9d9d9",
+    "nonlinear_3": "#bc80bd",
+    "nonlinear_4": "#ccebc5",
+    "nonlinear_5": "#ffed6f",
 }
 
 
@@ -28,11 +34,7 @@ def count(row):
     return len(selected)
 
 
-def main():
-    table = pd.read_csv("performance.tsv", sep="\t")
-    table.loc[table["value"] == -1, "value"] = 0
-    table["N_selected"] = table.selected.apply(lambda row: count(row))
-    table["void"] = table.N_selected.apply(lambda row: int(row > 0))
+def fdr_plot(table):
     run0, n0, p0, alpha0 = table.loc[0, ["run", "n", "p", "alpha"]]
     n = table[
         (table["run"] == run0)
@@ -41,7 +43,6 @@ def main():
         & (table["alpha"] == alpha0)
     ].shape[0]
     sub_table = table.groupby(["run", "n", "p", "alpha"]).mean()
-
     sub_table_sd = (table.groupby(["run", "n", "p", "alpha"]).std())[["value"]]
     sub_table_sd.columns = ["sd_value"]
     sub_table_sd = sub_table_sd["sd_value"] * 1.96 / n**0.5
@@ -133,9 +134,68 @@ def main():
             size=18,
         ),
     )
-    fig.show()
+    # fig.show()
     fig.write_image("lambda_control.png", width=1350, height=900)
     fig.write_html("lambda_control.html")
+
+
+def ms_kern(row):
+    ms = row["MS"]
+    kern = row["kernel"]
+    if ms == "HSIC":
+        return f"{ms}({kern})"
+    else:
+        return ms
+
+
+def main():
+    table = pd.read_csv("performance.tsv", sep="\t")
+    table.loc[table["value"] == -1, "value"] = 0
+    table["N_selected"] = table.selected.apply(lambda row: count(row))
+    table["void"] = table.N_selected.apply(lambda row: int(row > 0))
+
+    fdr_plot(table)
+
+    sub_table = table[table["alpha"] == table["alpha"].values[0]]
+
+    sub_table["ms_kern"] = sub_table.apply(lambda row: ms_kern(row), axis=1)
+    sub_table = sub_table.groupby(["run", "ms_kern"]).size().reset_index()
+    sub_table.columns = ["dataset", "MS", "Count"]
+    sub_table.sort_values(by=["dataset", "MS"])
+    fig = px.bar(
+        sub_table, x="dataset", y="Count", color="MS", title="Pick association measures"
+    )
+    fig.write_image("measure_stat.png", width=1350, height=900)
+    fig.write_html("measure_stat.html")
+
+    sub_table = table[table["alpha"] == table["alpha"].values[0]]
+
+    sub_table = sub_table.groupby(["run", "penalty"]).size().reset_index()
+    sub_table.columns = ["dataset", "Penalty", "Count"]
+    sub_table.sort_values(by=["dataset", "Penalty"])
+    fig = px.bar(
+        sub_table,
+        x="dataset",
+        y="Count",
+        color="Penalty",
+        title="Picked penalty measures",
+    )
+    fig.write_image("penalty.png", width=1350, height=900)
+    fig.write_html("penalty.html")
+
+    sub_table = table[table["alpha"] == table["alpha"].values[0]]
+
+    sub_table["ms_kern"] = sub_table.apply(lambda row: ms_kern(row), axis=1)
+    sub_table.sort_values(by=["run", "penalty", "ms_kern"])
+
+    fig = px.box(sub_table, x="run", y="lamb", color="penalty")
+
+    fig.write_image("lambda_vs_penalty.png", width=1350, height=900)
+    fig.write_html("lambda_vs_penalty.html")
+
+    fig = px.box(sub_table, x="run", y="lamb", color="ms_kern")
+    fig.write_image("lambda_vs_ms.png", width=1350, height=900)
+    fig.write_html("lambda_vs_ms.html")
 
 
 if __name__ == "__main__":

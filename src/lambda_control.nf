@@ -11,10 +11,7 @@ include { simulation_train_validation } from './nf_core/data_workflows.nf'
 
 
 process lambda_control {
-    conda { AM == 'PC' ? '/data/ghighdim/pnaylor/project/dclasso/env_GPU/' : '/data/ghighdim/pnaylor/project/dclasso/env/'}
-    clusterOptions {  TAG.contains("5000") ? '-jc gpu-container_g1 -v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH -ac d=nvcr-cuda-11.1-cudnn8.0': '-v PATH=/usr/bin:/home/pnaylor/miniconda3/bin:$PATH,PYTHONPATH=/data/ghighdim/pnaylor/project/dclasso/:/data/ghighdim/pnaylor/project/dclasso/src/templates:$PYTHONPATH' }
     tag "${TAG})" // ,${AM},${KERNEL}"
-    beforeScript { AM == 'PC' ? 'export LD_LIBRARY_PATH=/data/ghighdim/pnaylor/project/dclasso/env_GPU/lib:$LD_LIBRARY_PATH' : 'export LD_LIBRARY_PATH=/data/ghighdim/pnaylor/project/dclasso/env/lib:$LD_LIBRARY_PATH'}
 
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
@@ -38,7 +35,7 @@ process plot {
         path FILE
 
     output:
-        tuple path(FILE), path("fdr_alpha.*"), path("n_selected.*"), path("true_features.*")
+        tuple path(FILE), path("*.png"), path("*.html")
 
     script:
         py = file("src/templates/lambda_control/fdr_control_plot.py")
