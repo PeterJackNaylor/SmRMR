@@ -19,3 +19,6 @@ simulation_models:
 - 'categorical_0'
 - 'categorical_1'
 - 'categorical_2'
+- 'nonlinear_1'
+- 'nonlinear_2'
+- 'nonlinear_3'

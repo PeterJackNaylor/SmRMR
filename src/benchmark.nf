@@ -7,19 +7,14 @@ CWD = System.getProperty("user.dir")
 include { simulation_train_validation_test } from './nf_core/data_workflows.nf'
 
 process dclasso {
-    tag "model=DCLasso;data=${TAG});params=(${PENALTY},${AM},${KERNEL})"
+    tag "model=DCLasso;data=${TAG});params=(${PENALTY})"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
         each PENALTY
-        each AM
-        each KERNEL
         val PARAMS_FILE
 
     output:
-        tuple val("feature_selection=DCLasso(${PENALTY},${AM},${KERNEL});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
-
-    when:
-        (AM == "HSIC") || (KERNEL == "linear")
+        tuple val("feature_selection=DCLasso(${PENALTY});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
 
     script:
         template "feature_selection/DCLasso_simulations.py"
@@ -43,19 +38,19 @@ process feature_selection {
 
 }
 
-process feature_selection_and_prediction {
-    tag "model=${MODEL.name};data=${TAG})"
-    input:
-        each MODEL
-        tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
-        val PARAMS_FILE
+// process feature_selection_and_prediction {
+//     tag "model=${MODEL.name};data=${TAG})"
+//     input:
+//         each MODEL
+//         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
+//         val PARAMS_FILE
 
-    output:
-        tuple val("model=${MODEL.name};feature_selection=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
+//     output:
+//         tuple val("model=${MODEL.name};feature_selection=${MODEL.name};data=${TAG})"), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_${MODEL.name}.npz"), path('y_proba.npz'), path('y_pred.npz')
 
-    script:
-        template "feature_selection_and_prediction/${MODEL.name}.py"
-}
+//     script:
+//         template "feature_selection_and_prediction/${MODEL.name}.py"
+// }
 
 process prediction {
 
@@ -130,18 +125,18 @@ workflow models {
         metrics
         config_file
     main:
-        dclasso(data, dclasso_penalty, dclasso_am, dclasso_kernel, config_file)
+        // dclasso(data, dclasso_penalty, dclasso_am, dclasso_kernel, config_file)
         feature_selection(feature_selection_methods, data, config_file)
 
-        dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
+        // dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
 
-        prediction(prediction_methods, feature_selection_model, config_file)
+        // prediction(prediction_methods, feature_selection_model, config_file)
 
-        feature_selection_and_prediction(feature_and_prediction_methods, data, config_file)
+        // // feature_selection_and_prediction(feature_and_prediction_methods, data, config_file)
 
-        prediction.out .concat(feature_selection_and_prediction.out) .set{ perf }
+        // // prediction.out .concat(feature_selection_and_prediction.out) .set{ perf }
 
-        performance(metrics, perf)
+        // performance(metrics, prediction.out)
 
     emit:
         performance.out.collectFile(name: "${params.out}/performance.tsv", skip: 1, keepHeader: true)
