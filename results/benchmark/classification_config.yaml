@@ -23,7 +23,7 @@ dclasso:
 feature_selection:
   - name: hsic_lasso
     parameters:
-      num_feat: 15
+      num_feat: [5, 10, 15, 20, 25, 30]
       # penalty: ['l1']
   # - name: mrmr
   #   parameters:

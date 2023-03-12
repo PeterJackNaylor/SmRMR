@@ -25,7 +25,7 @@ def scad(theta, lamb=0.5, a=3.7, **kwargs):
     return pen.sum()
 
 
-def mcp(theta, lamb=0.5, b=3, **kwargs):
+def mcp(theta, lamb=0.5, b=3.5, **kwargs):
     abs_theta = np.absolute(theta)
     pen = lamb * np.where(
         abs_theta < lamb * b, abs_theta - abs_theta**2 / (2 * b * lamb), 0.5 * b
@@ -34,6 +34,24 @@ def mcp(theta, lamb=0.5, b=3, **kwargs):
 
 
 def pic_penalty(kwargs):
+    name = kwargs["name"]
+    match name:
+        case "None":
+            f = none
+        case "l1":
+            f = lasso
+        case "scad":
+            f = scad
+        case "mcp":
+            f = mcp
+        case _:
+            error_msg = f"Unkown penalty: given {name}"
+            raise ValueError(error_msg)
+    f = partial(f, **kwargs)
+    return f
+
+
+def pic_penalty_cvx(kwargs):
     name = kwargs["name"]
     match name:
         case "None":

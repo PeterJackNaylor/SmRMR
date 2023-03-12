@@ -24,7 +24,7 @@ screening:
 lambda_control:
 	$(CONDA_ACTIVATE); nextflow src/lambda_control.nf $(PROFILE) -params-file results/lambda_control/$${FILENAME} -resume
 
-benchmark: results/benchmark/config.yaml
+benchmark:
 	$(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/$${FILENAME} -resume
 
 test:

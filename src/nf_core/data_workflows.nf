@@ -49,6 +49,7 @@ workflow simulation_train_validation_test {
         test_pairs_np
         repeat
     main:
+
         simulation_train_validation(simulation_models, train_pairs_np, validation_pairs_np, repeat)
 
         sim_validation(simulation_models, test_pairs_np, 1, "_test") .set{ sim_test }

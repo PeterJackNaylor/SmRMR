@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -8,6 +9,10 @@ from tqdm import trange
 from .association_measures.hsic import precompute_kernels
 from .association_measures.distance_correlation import pdist_p, fill_diagonal
 from optax._src.base import GradientTransformation
+
+
+def argmin_lst(lst):
+    return lst.index(min(lst))
 
 
 def knock_off_check_parameters(n, p, n1, d):
@@ -412,69 +417,44 @@ def threshold_alpha(Ws, w_indice, alpha, conservative=True, verbose=True):
     return indices, t_alpha_min
 
 
-def gene_generators(param_grid, measure_stat, kernel, kernel_ms=[]):
-    def ms_kernel_gen(param_grid, measure_stat, kernel):
-        if "measure_stat" in param_grid:
-            measure_stat = param_grid["measure_stat"]
-        else:
-            measure_stat = [measure_stat]
-        if "kernel" in param_grid:
-            kernel = param_grid["kernel"]
-        else:
-            kernel = [kernel]
+def gene_generators(param_grid, kernel_ms=[]):
+    measure_stat = param_grid["ms"]
+    kernel = param_grid["kernel"]
+
+    def ms_kernel_gen():
         for ms in measure_stat:
             if ms in kernel_ms:
                 for k in kernel:
                     yield (ms, k)
             else:
-                yield (ms, kernel[0])
+                yield (ms, None)
 
-    def hp_gen(param_grid):
-        if "lambda" not in param_grid:
-            lambda_ = [0.5]
-        else:
-            lambda_ = param_grid["lambda"]
+    penalty = param_grid["penalty"]
+    optimizer = param_grid["optimizer"]
+    learning_rate = param_grid["learning_rate"]
+    lambda_ = param_grid["lambda"]
 
-        if "penalty" not in param_grid:
-            penalty = ["l1"]
-        else:
-            penalty = param_grid["penalty"]
-            if not isinstance(penalty, list):
-                penalty = [penalty]
-
-        if "learning_rate" not in param_grid:
-            learning_rate = [0.001]
-        else:
-            learning_rate = param_grid["learning_rate"]
-
-        if "optimizer" not in param_grid:
-            optimizer = ["adam"]
-        else:
-            optimizer = param_grid["optimizer"]
-            if not isinstance(optimizer, list):
-                optimizer = [optimizer]
-
+    def hp_gen():
         dic = {}
         dic["penalty_kwargs"] = {}
         dic["opt_kwargs"] = {"transition_steps": 100, "decay_rate": 0.99}
-        for pen in penalty:
+        iters = itertools.product(penalty, optimizer, learning_rate)
+        for pen, opt, lr in iters:
             dic["penalty_kwargs"]["name"] = pen
-            for lr in learning_rate:
-                dic["opt_kwargs"]["init_value"] = lr
-                for opt in optimizer:
-                    dic["optimizer"] = opt
-                    for lam in lambda_:
-                        dic["penalty_kwargs"]["lamb"] = lam
-                        if (
-                            pen == "None"
-                            and dic["penalty_kwargs"]["lamb"] == lambda_[0]
-                        ):
-                            dic["penalty_kwargs"]["lamb"] = 0
-                            yield dic
-                        elif pen != "None" and dic["penalty_kwargs"]["lamb"] != 0:
-                            yield dic
+            dic["opt_kwargs"]["init_value"] = lr
+            dic["optimizer"] = opt
+            if pen in ["None", "l1"]:
+                if lr != learning_rate[0]:
+                    continue
+            for la in lambda_:
+                dic["penalty_kwargs"]["lamb"] = la
+                if pen == "None" and dic["penalty_kwargs"]["lamb"] == lambda_[0]:
+                    dic["penalty_kwargs"]["lamb"] = 0
+                    yield dic
+                elif pen != "None" and dic["penalty_kwargs"]["lamb"] != 0:
+                    yield dic
 
-    return ms_kernel_gen(param_grid, measure_stat, kernel), hp_gen(param_grid)
+    return ms_kernel_gen, hp_gen
 
 
 def selected_top_k(beta, d):

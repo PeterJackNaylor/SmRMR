@@ -119,24 +119,16 @@ workflow models {
         feature_selection_methods
         prediction_methods
         dclasso_penalty
-        dclasso_am
-        dclasso_kernel
-        feature_and_prediction_methods
         metrics
         config_file
     main:
-        // dclasso(data, dclasso_penalty, dclasso_am, dclasso_kernel, config_file)
+        dclasso(data, dclasso_penalty, config_file)
         feature_selection(feature_selection_methods, data, config_file)
 
-        // dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
+        dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
+        prediction(prediction_methods, feature_selection_model, config_file)
 
-        // prediction(prediction_methods, feature_selection_model, config_file)
-
-        // // feature_selection_and_prediction(feature_and_prediction_methods, data, config_file)
-
-        // // prediction.out .concat(feature_selection_and_prediction.out) .set{ perf }
-
-        // performance(metrics, prediction.out)
+        performance(metrics, prediction.out)
 
     emit:
         performance.out.collectFile(name: "${params.out}/performance.tsv", skip: 1, keepHeader: true)
@@ -150,8 +142,7 @@ workflow {
         )
         models(
             simulation_train_validation_test.out, params.feature_selection, params.prediction,
-            params.penalty, params.measure_stat, params.kernel,
-            params.feature_selection_and_prediction, params.performance_metrics,
+            params.penalty, params.performance_metrics,
             config
         )
         plot(models.out)

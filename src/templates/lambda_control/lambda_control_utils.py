@@ -52,31 +52,24 @@ def perform_optimisation_with_parameters(
     conservative,
 ):
     penalty_kwargs = {"name": pen, "lamb": lam}
-    loss_fn = partial(
-        loss,
-        Dxy=dclasso_main.Dxy,
-        Dxx=dclasso_main.Dxx,
-        penalty_func=pic_penalty(penalty_kwargs),
-    )
+    beta, value, warm_start = dclasso_main.cvx_solve(penalty_kwargs)
+    if warm_start:
+        loss_fn = dclasso_main.compute_loss_fn(penalty_kwargs)
 
-    step_function, opt_state, beta = dclasso_main.setup_optimisation(
-        loss_fn,
-        opt,
-        d,
-        key,
-        "from_convex_solve",
-        dclasso_main.Dxx,
-        dclasso_main.Dxy,
-        opt_kwargs,
-    )
-    beta, _ = minimize_loss(
-        step_function,
-        opt_state,
-        beta,
-        max_epoch,
-        eps_stop,
-        verbose=dclasso_main.verbose,
-    )
+        step_function, opt_state, beta = dclasso_main.setup_optimisation(
+            loss_fn,
+            opt,
+            beta,
+            opt_kwargs,
+        )
+        beta, _ = minimize_loss(
+            step_function,
+            opt_state,
+            beta,
+            max_epoch,
+            eps_stop,
+            verbose=dclasso_main.verbose,
+        )
     wjs = beta[:d] - beta[d:]
     fdr_l, selected_l = perform_alpha_computations(
         alpha_list, wjs, dclasso_main.screen_indices_, causal_features, conservative

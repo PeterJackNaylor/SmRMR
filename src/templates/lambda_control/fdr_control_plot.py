@@ -188,12 +188,12 @@ def main():
     sub_table["ms_kern"] = sub_table.apply(lambda row: ms_kern(row), axis=1)
     sub_table.sort_values(by=["run", "penalty", "ms_kern"])
 
-    fig = px.box(sub_table, x="run", y="lamb", color="penalty")
+    fig = px.box(sub_table, x="run", y="lamb", color="penalty", log_y=True)
 
     fig.write_image("lambda_vs_penalty.png", width=1350, height=900)
     fig.write_html("lambda_vs_penalty.html")
 
-    fig = px.box(sub_table, x="run", y="lamb", color="ms_kern")
+    fig = px.box(sub_table, x="run", y="lamb", color="ms_kern", log_y=True)
     fig.write_image("lambda_vs_ms.png", width=1350, height=900)
     fig.write_html("lambda_vs_ms.html")
 
