@@ -243,6 +243,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             case "mcp":
                 reg = 0
                 warm_start = True
+                qcp = False
         objective = cp.Minimize(
             -self.Dxy.T @ theta + 0.5 * cp.quad_form(theta, self.Dxx) + reg
         )
