@@ -5,35 +5,35 @@ simulation_np: [[100, 100], [100, 500], [100, 5000]] #, [500, 100], [500, 500], 
 validation_samples: [[100, 100], [100, 500], [100, 5000]]
 test_samples: [[10000, 100], [10000, 500], [10000, 5000]]
 simulation_models:
-- 'linear_00'
-- 'linear_0'
-- 'linear_1'
-- 'linear_2'
-- 'categorical_0'
-- 'categorical_1'
-- 'categorical_2'
-- 'nonlinear_1'
-- 'nonlinear_2'
-- 'nonlinear_3'
-penalty: ["scad", "mcp", "l1"]
+- linear_00
+- linear_0
+- linear_1
+- linear_2
+- categorical_0
+- categorical_1
+- categorical_2
+- nonlinear_1
+- nonlinear_2
+- nonlinear_3
+penalty: [scad, mcp, l1, None]
+kernel: [linear, gaussian]
+measure_stat: [PC, HSIC]
 dclasso:
   - name: dclasso
     parameters:
       alpha: 0.3
-      n1: 0.3
-      epoch: 150
-      optimizer: ["adam"]
-      kernel: ["linear", "gaussian"]
-      measure_stat: ["PC", "HSIC"]
-      lambda: [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
-      lr: [1.e-4, 1.e-3, 1.e-2]
+      n1: 0.5
+      lambda: [1e-5, 1e1]
+      # epoch: 150
+      # optimizer: [adam]
+      # lr: [1.e-4, 1.e-3, 1.e-2]
 feature_selection:
   - name: hsic_lasso
     parameters:
       num_features: [5, 10, 15, 20, 25, 30]
   - name: mrmr
     parameters:
-      criteria: ["MIQ", "MID"]
+      criteria: [MIQ, MID]
       num_features: [5, 10, 15, 20, 25, 30]
 prediction:
   # - name: gbdt
@@ -49,15 +49,15 @@ prediction:
   # - name: logistic_regression
   #   prediction: classification
   #   parameters:
-  #     penalty: [ 'l1', 'none' ]
+  #     penalty: [ l1, none ]
   #     C: [ 0.01, 0.1, 0.2, 0.5 ]
   - name: random_forest
     prediction: classification
     parameters:
       n_estimators: [ 200, 500 ]
-      max_features: [ "auto", "log2" ]
+      max_features: [ auto, log2 ]
       max_depth: [ 4, 6, 8 ]
-      criterion: [ "gini", "entropy" ]
+      criterion: [ gini, entropy ]
   # - name: svc
   #   prediction: classification
   #   parameters:

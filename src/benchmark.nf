@@ -7,16 +7,26 @@ CWD = System.getProperty("user.dir")
 include { simulation_train_validation_test } from './nf_core/data_workflows.nf'
 
 process dclasso {
-    tag "model=DCLasso;data=${TAG});params=(${PENALTY})"
+    tag "model=DCLasso;data=${TAG});params=(${model_tag};${PENALTY})"
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
+        each MS
+        each KERNEL
         each PENALTY
         val PARAMS_FILE
 
     output:
         tuple val("feature_selection=DCLasso(${PENALTY});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
 
+    when:
+        (MS == "HSIC") || (KERNEL == "linear")
+
     script:
+        if (MS != "HSIC"){
+            model_tag = MS
+        } else {
+            model_tag = "${MS} (${KERNEL})"
+        }
         template "feature_selection/DCLasso_simulations.py"
 }
 
@@ -118,11 +128,13 @@ workflow models {
         data
         feature_selection_methods
         prediction_methods
+        dclasso_ms
+        dclasso_kernel
         dclasso_penalty
         metrics
         config_file
     main:
-        dclasso(data, dclasso_penalty, config_file)
+        dclasso(data, dclasso_ms, dclasso_kernel, dclasso_penalty, config_file)
         feature_selection(feature_selection_methods, data, config_file)
 
         dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
@@ -142,7 +154,7 @@ workflow {
         )
         models(
             simulation_train_validation_test.out, params.feature_selection, params.prediction,
-            params.penalty, params.performance_metrics,
+            params.measure_stat, params.kernel, params.penalty, params.performance_metrics,
             config
         )
         plot(models.out)

@@ -12,7 +12,7 @@ class HSIC_object(AM):
         Y,
         precompute=None,
         kernel="gaussian",
-        normalised=False,
+        normalised=True,
         sigma=None,
         **args
     ):

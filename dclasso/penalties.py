@@ -25,12 +25,32 @@ def scad(theta, lamb=0.5, a=3.7, **kwargs):
     return pen.sum()
 
 
+def scad_derivative(theta, lamb=0.5, a=3.7, **kwargs):
+    abs_theta = np.absolute(theta)
+    pen = np.where(
+        abs_theta <= lamb,
+        lamb,
+        np.where(
+            abs_theta < a * lamb,
+            (a * lamb - abs_theta) / (a - 1),
+            0,
+        ),
+    )
+    return pen
+
+
 def mcp(theta, lamb=0.5, b=3.5, **kwargs):
     abs_theta = np.absolute(theta)
     pen = lamb * np.where(
         abs_theta < lamb * b, abs_theta - abs_theta**2 / (2 * b * lamb), 0.5 * b
     )
     return pen.sum()
+
+
+def mcp_derivative(theta, lamb=0.5, b=3.5, **kwargs):
+    abs_theta = np.absolute(theta)
+    pen = np.where(abs_theta <= lamb * b, (lamb - abs_theta / b) * np.sign(theta), 0)
+    return pen
 
 
 def pic_penalty(kwargs):
@@ -46,6 +66,20 @@ def pic_penalty(kwargs):
             f = mcp
         case _:
             error_msg = f"Unkown penalty: given {name}"
+            raise ValueError(error_msg)
+    f = partial(f, **kwargs)
+    return f
+
+
+def pic_derivative(kwargs):
+    name = kwargs["name"]
+    match name:
+        case "scad":
+            f = scad_derivative
+        case "mcp":
+            f = mcp_derivative
+        case _:
+            error_msg = f"Unkown derivative penalty: given {name}"
             raise ValueError(error_msg)
     f = partial(f, **kwargs)
     return f

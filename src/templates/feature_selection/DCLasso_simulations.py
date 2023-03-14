@@ -15,7 +15,7 @@ Output files:
     hyperparameters selected by cross-validation
   - selected.tsv: like selected.npz, but in tsv format.
 """
-# from operator import itemgetter
+
 import numpy as np
 from pandas import DataFrame
 from dclasso import DCLasso
@@ -33,56 +33,40 @@ def main():
     X_val = val_data["X"]
     y_val = val_data["y"]
 
-    # test_data = np.load("${TEST_NPZ}")
-
-    # X_test = test_data["X"]
-    # y_test = test_data["y"]
-
     u.set_random_state()
 
-    # minimize_val_loss = True
     param_grid = u.read_parameters("${PARAMS_FILE}", "dclasso", "dclasso")
-
-    hyperparameters = {
-        "ms": param_grid["measure_stat"],
-        "kernel": param_grid["kernel"],
-        "lambda": param_grid["lambda"],
-        "learning_rate": param_grid["lr"],
-        "penalty": ["${PENALTY}"],
-        "optimizer": param_grid["optimizer"],
-    }
-    # n1 = param_grid["n1"]
 
     dl = DCLasso(
         alpha=param_grid["alpha"],
-        measure_stat=None,
-        kernel=None,
+        measure_stat="${MS}",
+        kernel="${KERNEL}",
         hard_alpha=False,
     )
 
-    dl.cv_fit(
+    train_l, val_l = dl.cv_fit(
         X_train,
         y_train,
         X_val,
         y_val,
-        param_grid=hyperparameters,
+        "${PENALTY}",
+        param_grid["lambda"],
         n1=param_grid["n1"],
-        max_epoch=param_grid["epoch"],
-        refit=True,
+        pen_kwargs=dict(a=3.7, b=3.5),
     )
-    best_score = dl.validation_scores[dl.best_run]
-    best_hyperparameter = dl.best_hp
+
+    best_hyperparameter = {"lambda": dl.best_lambda}
 
     selected_feats = np.zeros(shape=(X_train.shape[1],), dtype=bool)
 
     if len(dl.alpha_indices_):
         selected_feats[np.array(dl.alpha_indices_)] = True
     best_feat = np.asarray(dl.alpha_indices_)
-    wj = np.asarray(dl.wjs_[dl.wjs_ >= dl.t_alpha_])
+    wj = np.asarray(dl.wjs_[np.asarray(dl.wjs_ >= dl.t_alpha_)])
 
     hp_dic = {}
     with open("hyperparameters_selection.dclasso.tsv", "a") as file:
-        file.write(f"# score: {best_score}\\n")
+        file.write(f"# score: {val_l}\\n")
         for param, val in best_hyperparameter.items():
             if type(val) is dict:
                 for item, value in val.items():

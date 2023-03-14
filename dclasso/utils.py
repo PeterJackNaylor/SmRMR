@@ -1,14 +1,17 @@
-import itertools
+# import itertools
 import numpy as np
 import jax
 import jax.numpy as jnp
-import optax
+
+# import optax
 from jax import jit, vmap
 from scipy.sparse.linalg import eigsh
-from tqdm import trange
+
+# from tqdm import trange
 from .association_measures.hsic import precompute_kernels
 from .association_measures.distance_correlation import pdist_p, fill_diagonal
-from optax._src.base import GradientTransformation
+
+# from optax._src.base import GradientTransformation
 
 
 def argmin_lst(lst):
@@ -212,88 +215,88 @@ def alpha_threshold(
     return alpha_indices_, t_alpha_, n_features_out_
 
 
-def apply_at(fn, pos_lst, iterable):
-    """
-    Apply function at given indices in the iterable.
+# def apply_at(fn, pos_lst, iterable):
+#     """
+#     Apply function at given indices in the iterable.
 
-    Args:
-        fn (function): Function to apply
-        pos_lst list: list-like array containing the indices
-        iterable list: array on which to apply the transformation
+#     Args:
+#         fn (function): Function to apply
+#         pos_lst list: list-like array containing the indices
+#         iterable list: array on which to apply the transformation
 
-    Returns:
-        list: with elements in pos_lst modified by fn.
-    """
-    pos_lst = set(pos_lst)
-    return [fn(x) if i in pos_lst else x for (i, x) in enumerate(iterable)]
-
-
-def pos_proj(array):
-    """Positive projection of the array
-    by simple positive clipping.
-
-    Args:
-        array (numpy array like): input aray
-
-    Returns:
-        Same type as input: clipped array
-    """
-    return array.clip(0)
+#     Returns:
+#         list: with elements in pos_lst modified by fn.
+#     """
+#     pos_lst = set(pos_lst)
+#     return [fn(x) if i in pos_lst else x for (i, x) in enumerate(iterable)]
 
 
-def minimize_loss(
-    step_function, opt_state, beta, max_epoch, eps_stop, patience=5, verbose=False
-):
-    # error_tmp = []
-    prev = jnp.inf
-    i = 0
-    # Minimizing loss function
-    range_epoch = trange(max_epoch) if verbose else range(max_epoch)
-    for _ in range_epoch:
-        value, beta, opt_state = step_function(beta, opt_state)
-        # error_tmp.append(float(value))
-        if abs(value - prev) < eps_stop / patience:
-            i += 1
-            if i == patience:
-                break
-        else:
-            i = 0
-        prev = value
-    return beta, value
+# def pos_proj(array):
+#     """Positive projection of the array
+#     by simple positive clipping.
+
+#     Args:
+#         array (numpy array like): input aray
+
+#     Returns:
+#         Same type as input: clipped array
+#     """
+#     return array.clip(0)
 
 
-def get_optimizer(opt, opt_kwargs):
-    scheduler = optax.exponential_decay(**opt_kwargs)
+# def minimize_loss(
+#     step_function, opt_state, beta, max_epoch, eps_stop, patience=5, verbose=False
+# ):
+#     # error_tmp = []
+#     prev = jnp.inf
+#     i = 0
+#     # Minimizing loss function
+#     range_epoch = trange(max_epoch) if verbose else range(max_epoch)
+#     for _ in range_epoch:
+#         value, beta, opt_state = step_function(beta, opt_state)
+#         # error_tmp.append(float(value))
+#         if abs(value - prev) < eps_stop / patience:
+#             i += 1
+#             if i == patience:
+#                 break
+#         else:
+#             i = 0
+#         prev = value
+#     return beta, value
 
-    match opt:
-        case "SGD":
-            optimizer = optax.chain(
-                optax.identity(),
-                optax.scale_by_schedule(scheduler),
-                optax.scale(-1.0),
-                optax.keep_params_nonnegative(),
-            )
 
-        case "adam":
-            # Combining gradient transforms using `optax.chain`.
-            optimizer = optax.chain(
-                optax.scale_by_adam(),  # Use the updates from adam.
-                optax.scale_by_schedule(
-                    scheduler
-                ),  # Use the learning rate from the scheduler.
-                # Scale updates by -1 since optax.apply_updates is additive and we
-                # want to descend on the loss.
-                optax.scale(-1.0),
-                optax.keep_params_nonnegative(),
-            )
-        case opt if opt.__class__ == GradientTransformation:
-            optimizer = opt
-        case _:
-            error_msg = f"Unkown optimizer: {opt}, should be a known string or of \
-            GradientTransformation class of the optax python package"
-            raise ValueError(error_msg)
+# def get_optimizer(opt, opt_kwargs):
+#     scheduler = optax.exponential_decay(**opt_kwargs)
 
-    return optimizer
+#     match opt:
+#         case "SGD":
+#             optimizer = optax.chain(
+#                 optax.identity(),
+#                 optax.scale_by_schedule(scheduler),
+#                 optax.scale(-1.0),
+#                 optax.keep_params_nonnegative(),
+#             )
+
+#         case "adam":
+#             # Combining gradient transforms using `optax.chain`.
+#             optimizer = optax.chain(
+#                 optax.scale_by_adam(),  # Use the updates from adam.
+#                 optax.scale_by_schedule(
+#                     scheduler
+#                 ),  # Use the learning rate from the scheduler.
+#                 # Scale updates by -1 since optax.apply_updates is additive and we
+#                 # want to descend on the loss.
+#                 optax.scale(-1.0),
+#                 optax.keep_params_nonnegative(),
+#             )
+#         case opt if opt.__class__ == GradientTransformation:
+#             optimizer = opt
+#         case _:
+#             error_msg = f"Unkown optimizer: {opt}, should be a known string or of \
+#             GradientTransformation class of the optax python package"
+#             raise ValueError(error_msg)
+
+#     return optimizer
 
 
 def compute_kernels_for_am(X, y, kernel, **kwargs):
@@ -417,44 +420,44 @@ def threshold_alpha(Ws, w_indice, alpha, conservative=True, verbose=True):
     return indices, t_alpha_min
 
 
-def gene_generators(param_grid, kernel_ms=[]):
-    measure_stat = param_grid["ms"]
-    kernel = param_grid["kernel"]
+# def gene_generators(param_grid, kernel_ms=[]):
+#     measure_stat = param_grid["ms"]
+#     kernel = param_grid["kernel"]
 
-    def ms_kernel_gen():
-        for ms in measure_stat:
-            if ms in kernel_ms:
-                for k in kernel:
-                    yield (ms, k)
-            else:
-                yield (ms, None)
+#     def ms_kernel_gen():
+#         for ms in measure_stat:
+#             if ms in kernel_ms:
+#                 for k in kernel:
+#                     yield (ms, k)
+#             else:
+#                 yield (ms, None)
 
-    penalty = param_grid["penalty"]
-    optimizer = param_grid["optimizer"]
-    learning_rate = param_grid["learning_rate"]
-    lambda_ = param_grid["lambda"]
+#     penalty = param_grid["penalty"]
+#     optimizer = param_grid["optimizer"]
+#     learning_rate = param_grid["learning_rate"]
+#     lambda_ = param_grid["lambda"]
 
-    def hp_gen():
-        dic = {}
-        dic["penalty_kwargs"] = {}
-        dic["opt_kwargs"] = {"transition_steps": 100, "decay_rate": 0.99}
-        iters = itertools.product(penalty, optimizer, learning_rate)
-        for pen, opt, lr in iters:
-            dic["penalty_kwargs"]["name"] = pen
-            dic["opt_kwargs"]["init_value"] = lr
-            dic["optimizer"] = opt
-            if pen in ["None", "l1"]:
-                if lr != learning_rate[0]:
-                    continue
-            for la in lambda_:
-                dic["penalty_kwargs"]["lamb"] = la
-                if pen == "None" and dic["penalty_kwargs"]["lamb"] == lambda_[0]:
-                    dic["penalty_kwargs"]["lamb"] = 0
-                    yield dic
-                elif pen != "None" and dic["penalty_kwargs"]["lamb"] != 0:
-                    yield dic
+#     def hp_gen():
+#         dic = {}
+#         dic["penalty_kwargs"] = {}
+#         dic["opt_kwargs"] = {"transition_steps": 100, "decay_rate": 0.99}
+#         iters = itertools.product(penalty, optimizer, learning_rate)
+#         for pen, opt, lr in iters:
+#             dic["penalty_kwargs"]["name"] = pen
+#             dic["opt_kwargs"]["init_value"] = lr
+#             dic["optimizer"] = opt
+#             if pen in ["None", "l1"]:
+#                 if lr != learning_rate[0]:
+#                     continue
+#             for la in lambda_:
+#                 dic["penalty_kwargs"]["lamb"] = la
+#                 if pen == "None" and dic["penalty_kwargs"]["lamb"] == lambda_[0]:
+#                     dic["penalty_kwargs"]["lamb"] = 0
+#                     yield dic
+#                 elif pen != "None" and dic["penalty_kwargs"]["lamb"] != 0:
+#                     yield dic
 
-    return ms_kernel_gen, hp_gen
+#     return ms_kernel_gen, hp_gen
 
 
 def selected_top_k(beta, d):

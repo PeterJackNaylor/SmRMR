@@ -4,31 +4,32 @@ from functools import partial
 import numpy.typing as npt
 import jax.numpy as np
 from jax.lax import top_k
-from jax import value_and_grad, random
+from jax import random  # value_and_grad,
 
+import optuna
 import cvxpy as cp
 
 # from .penalties_cvx import mcp_cvx, huber
 
-import optax
+# import optax
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_X_y
 
 from . import association_measures as am
 
-from .penalties import pic_penalty
+from .penalties import pic_penalty, pic_derivative
 from .utils import (
     knock_off_check_parameters,
     get_equi_features,
     generate_random_sets,
-    argmin_lst,
+    # argmin_lst,
     # pos_proj,
-    get_optimizer,
-    minimize_loss,
+    # get_optimizer,
+    # minimize_loss,
     selected_top_k,
     precompute_kernels_match,
     alpha_threshold,
-    gene_generators,
+    # gene_generators,
 )
 
 
@@ -181,77 +182,54 @@ class DCLasso(BaseEstimator, TransformerMixin):
         return self
 
     def minimize_loss_function(
-        self, pen_kwargs, optimizer, opt_kwargs, max_epoch, eps_stop
+        self,
+        pen_kwargs
+        # , optimizer, opt_kwargs, max_epoch, eps_stop
     ):
         if self.verbose:
             print("Starting to compute the loss")
         # Penalty/Loss setting
 
-        beta, value, warm_start = self.cvx_solve(pen_kwargs)
+        beta, value = self.cvx_solve(pen_kwargs)
 
         # The optimal value for x is stored in `x.value`.
-        if warm_start:
-            loss_fn = self.compute_loss_fn(pen_kwargs)
-            step_function, opt_state, beta = self.setup_optimisation(
-                loss_fn,
-                optimizer,
-                beta,
-                opt_kwargs,
-            )
+        if pen_kwargs["name"] in ["scad", "mcp"]:
             if self.verbose:
-                print("Starting to optimise the loss with jax")
-            beta, value = minimize_loss(
-                step_function,
-                opt_state,
-                beta,
-                max_epoch,
-                eps_stop,
-                verbose=self.verbose,
-            )
-
+                print("Starting to optimise with scad//mcp")
+            beta, value = self.cvx_solve(pen_kwargs, init_beta=beta)
         if self.verbose:
             print("The loss has been optimised")
         return beta, value
 
-    def cvx_solve(self, pen_kwargs):
+    def cvx_solve(self, pen_kwargs, init_beta=None):
         p = self.Dxx.shape[1]
         theta = cp.Variable(p)
         constraints = [theta >= 0]
-        match pen_kwargs["name"]:
+        if init_beta is None:
+            regulariser = "l1"
+        else:
+            regulariser = pen_kwargs["name"]
+        match regulariser:
             case "None":
                 reg = 0
-                warm_start = False
-                qcp = False
             case "l1":
                 reg = pen_kwargs["lamb"] * cp.norm(theta, 1)
-                warm_start = False
-                qcp = False
-            case "scad":
-                # n = 5
-                # a = 3.7
-                # g = cp.Variable(p)
-                # la = pen_kwargs["lamb"]
-                reg = 0
-                # constraints.append(g >= 0)
-                # constraints.append(g <= la)
-                qcp = False
-                # reg = n * ((cp.abs(theta) - a * la) @ g +
-                #  0.5*(a-1) * cp.norm(g, 2) ** 2)
-                # reg = n * ((cp.abs(theta)) @ g + 0.5*(a-1)
-                #  * cp.norm(g, 2) ** 2)
-                warm_start = True
-            case "mcp":
-                reg = 0
-                warm_start = True
-                qcp = False
+            case "scad" | "mcp":
+                lamb_theta = pic_derivative(pen_kwargs)(init_beta)
+                reg = cp.sum(lamb_theta @ cp.abs(theta))
         objective = cp.Minimize(
             -self.Dxy.T @ theta + 0.5 * cp.quad_form(theta, self.Dxx) + reg
         )
         problem = cp.Problem(objective, constraints)
-        result = problem.solve(qcp=qcp)
+        result = problem.solve()
         beta = theta.value
         value = result
-        return beta, value, warm_start
+
+        # set to 0 values that are too small with respect to the rest
+        threshold = float(np.abs(beta).max()) / 1e5
+        beta[beta < threshold] = 0
+
+        return beta, value
 
     def cv_fit(
         self,
@@ -259,15 +237,15 @@ class DCLasso(BaseEstimator, TransformerMixin):
         y: npt.ArrayLike,
         X_val: npt.ArrayLike,
         y_val: npt.ArrayLike,
-        param_grid: dict,
+        penalty: str,
+        lambda_range: list,
         n1: float,
         d: int = None,
+        n_trials: int = 50,
         seed: int = 42,
-        max_epoch: int = 301,
-        eps: float = 1e-6,
         data_recycling: bool = False,
-        refit: bool = True,
         conservative: bool = True,
+        **pen_kwargs,
     ):
         self.verbose = True
         key = random.PRNGKey(seed)
@@ -285,78 +263,59 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         self.n_features_in_ = p
 
-        generator_ms_kernel, hyperparameter_generator = gene_generators(
-            param_grid, kernel_ms
+        X2, y2, X1, y1, screen_indices, d = self.screen_split(
+            X, y, n, p, n1, d, penalty, key, **pen_kwargs
         )
 
-        train_scores = []
-        validation_scores = []
-        dict_hp = {}
-        betas = {}
-        id_ = 0
-        for ms, kernel in generator_ms_kernel():
-            self.measure_stat = ms
-            self.kernel = kernel
-            # we have to prescreen and split if needed
-            X2, y2, X1, y1, screen_indices, d = self.screen_split(
-                X,
-                y,
-                n,
-                p,
-                n1,
-                d,
-                "None",
-                key,
-            )
+        Xhat = get_equi_features(X2, key)
 
-            # Compute knock-off variables
-            Xhat = get_equi_features(X2, key)
+        if data_recycling:
+            X1_tild = np.concatenate([X1, X1], axis=1)
+            X2_tild = np.concatenate([X2, Xhat], axis=1)
+            Xs = np.concatenate([X1_tild, X2_tild], axis=0)
+            ys = np.concatenate([y1, y2], axis=0)
+        else:
+            Xs = np.concatenate([X2, Xhat], axis=1)
+            ys = y2
 
-            if data_recycling:
-                X1_tild = np.concatenate([X1, X1], axis=1)
-                X2_tild = np.concatenate([X2, Xhat], axis=1)
-                Xs = np.concatenate([X1_tild, X2_tild], axis=0)
-                ys = np.concatenate([y1, y2], axis=0)
-            else:
-                Xs = np.concatenate([X2, Xhat], axis=1)
-                ys = y2
+        self.compute_matrix(Xs, ys)
 
-            self.compute_matrix(Xs, ys)
+        Dxy_val = self._compute_assoc(X_val[:, screen_indices], y_val, **self.ms_kwargs)
+        Dxx_val = self._compute_assoc(X_val[:, screen_indices], **self.ms_kwargs)
+        val_penalty = {"name": "None"}
+        loss_val = partial(
+            loss, Dxy=Dxy_val, Dxx=Dxx_val, penalty_func=pic_penalty(val_penalty)
+        )
+        if penalty != "None":
 
-            Dxy_val = self._compute_assoc(
-                X_val[:, screen_indices], y_val, **self.ms_kwargs
-            )
-            Dxx_val = self._compute_assoc(X_val[:, screen_indices], **self.ms_kwargs)
-            val_penalty = {"name": "None"}
-            loss_val = partial(
-                loss, Dxy=Dxy_val, Dxx=Dxx_val, penalty_func=pic_penalty(val_penalty)
-            )
-
-            for hyper in hyperparameter_generator():
-                hyper["ms"] = ms
-                hyper["kernel"] = kernel
-                if self.verbose:
-                    print(hyper)
-
-                optimizer = hyper["optimizer"]
-                penalty_kwargs = hyper["penalty_kwargs"]
-                opt_kwargs = hyper["opt_kwargs"]
-
+            def objective(trial):
+                lambda_ = trial.suggest_float(
+                    "lambda", float(lambda_range[0]), float(lambda_range[1]), log=True
+                )
+                penalty_kwargs = {"name": penalty, "lamb": lambda_}
+                penalty_kwargs.update(pen_kwargs)
                 beta, train_loss = self.minimize_loss_function(
-                    penalty_kwargs, optimizer, opt_kwargs, max_epoch, eps
+                    penalty_kwargs,
                 )
                 validation_loss = float(loss_val(beta[:d]))
-                train_scores.append(train_loss)
-                validation_scores.append(validation_loss)
-                dict_hp[id_] = hyper
-                betas[id_] = (beta, screen_indices, d)
-                id_ += 1
+                return validation_loss
 
-        self.train_scores = train_scores
-        self.validation_scores = validation_scores
-        self.best_run = argmin_lst(self.validation_scores)
-        self.best_hp = dict_hp[self.best_run]
-        beta, screen_indices, d = betas[self.best_run]
+            study = optuna.create_study(
+                direction="minimize", sampler=optuna.samplers.TPESampler()
+            )
+            study.optimize(objective, n_trials=n_trials)
+            self.best_lambda = study.best_params["lambda"]
+            val_loss = study.best_value
+        else:
+            self.best_lambda = 0
+
+        penalty_kwargs = {"name": penalty, "lamb": self.best_lambda}
+        beta, train_loss = self.minimize_loss_function(
+            penalty_kwargs,
+        )
+        if penalty != "None":
+            val_loss = float(loss_val(beta[:d]))
+
         self.beta_ = beta
         self.screen_indices_ = screen_indices
         self.wjs_ = self.beta_[:d] - self.beta_[d:]
@@ -374,7 +333,130 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.t_alpha_ = alpha_thres[1]
         self.n_features_out_ = alpha_thres[2]
 
-        return self
+        return train_loss, val_loss
+
+    # def cv_fit2(
+    #     self,
+    #     X: npt.ArrayLike,
+    #     y: npt.ArrayLike,
+    #     X_val: npt.ArrayLike,
+    #     y_val: npt.ArrayLike,
+    #     param_grid: dict,
+    #     n1: float,
+    #     d: int = None,
+    #     seed: int = 42,
+    #     max_epoch: int = 301,
+    #     eps: float = 1e-6,
+    #     data_recycling: bool = False,
+    #     refit: bool = True,
+    #     conservative: bool = True,
+    # ):
+    #     self.verbose = True
+    #     key = random.PRNGKey(seed)
+    #     X, y = check_X_y(X, y)
+    #     X = np.asarray(X)
+    #     y = np.asarray(y)
+    #     X_val, y_val = check_X_y(X_val, y_val)
+    #     y_val = np.asarray(y_val)
+    #     X_val = np.asarray(X_val)
+    #     n, p = X.shape
+    #     (ny,) = y.shape
+    #     assert n == ny
+    #     assert X_val.shape[0] == y_val.shape[0]
+    #     assert p == X_val.shape[1]
+
+    #     self.n_features_in_ = p
+
+    #     generator_ms_kernel, hyperparameter_generator = gene_generators(
+    #         param_grid, kernel_ms
+    #     )
+
+    #     train_scores = []
+    #     validation_scores = []
+    #     dict_hp = {}
+    #     betas = {}
+    #     id_ = 0
+    #     for ms, kernel in generator_ms_kernel():
+    #         self.measure_stat = ms
+    #         self.kernel = kernel
+    #         # we have to prescreen and split if needed
+    #         X2, y2, X1, y1, screen_indices, d = self.screen_split(
+    #             X,
+    #             y,
+    #             n,
+    #             p,
+    #             n1,
+    #             d,
+    #             "scad", # "None"
+    #             key,
+    #         )
+
+    #         # Compute knock-off variables
+    #         Xhat = get_equi_features(X2, key)
+
+    #         if data_recycling:
+    #             X1_tild = np.concatenate([X1, X1], axis=1)
+    #             X2_tild = np.concatenate([X2, Xhat], axis=1)
+    #             Xs = np.concatenate([X1_tild, X2_tild], axis=0)
+    #             ys = np.concatenate([y1, y2], axis=0)
+    #         else:
+    #             Xs = np.concatenate([X2, Xhat], axis=1)
+    #             ys = y2
+
+    #         self.compute_matrix(Xs, ys)
+
+    #         Dxy_val = self._compute_assoc(
+    #             X_val[:, screen_indices], y_val, **self.ms_kwargs
+    #         )
+    #         Dxx_val = self._compute_assoc(X_val[:, screen_indices], **self.ms_kwargs)
+    #         val_penalty = {"name": "None"}
+    #         loss_val = partial(
+    #             loss, Dxy=Dxy_val, Dxx=Dxx_val, penalty_func=pic_penalty(val_penalty)
+    #         )
+
+    #         for hyper in hyperparameter_generator():
+    #             hyper["ms"] = ms
+    #             hyper["kernel"] = kernel
+    #             if self.verbose:
+    #                 print(hyper)
+
+    #             optimizer = hyper["optimizer"]
+    #             penalty_kwargs = hyper["penalty_kwargs"]
+    #             opt_kwargs = hyper["opt_kwargs"]
+
+    #             beta, train_loss = self.minimize_loss_function(
+    #                 penalty_kwargs, optimizer, opt_kwargs, max_epoch, eps
+    #             )
+    #             validation_loss = float(loss_val(beta[:d]))
+    #             train_scores.append(train_loss)
+    #             validation_scores.append(validation_loss)
+    #             dict_hp[id_] = hyper
+    #             betas[id_] = (beta, screen_indices, d)
+    #             id_ += 1
+
+    #     self.train_scores = train_scores
+    #     self.validation_scores = validation_scores
+    #     self.best_run = argmin_lst(self.validation_scores)
+    #     self.best_hp = dict_hp[self.best_run]
+    #     beta, screen_indices, d = betas[self.best_run]
+    #     self.beta_ = beta
+    #     self.screen_indices_ = screen_indices
+    #     self.wjs_ = self.beta_[:d] - self.beta_[d:]
+    #     alpha_thres = alpha_threshold(
+    #         self.alpha,
+    #         self.wjs_,
+    #         self.screen_indices_,
+    #         hard_alpha=self.hard_alpha,
+    #         alpha_increase=self.alpha_increase,
+    #         conservative=conservative,
+    #         verbose=self.verbose,
+    #     )
+
+    #     self.alpha_indices_ = alpha_thres[0]
+    #     self.t_alpha_ = alpha_thres[1]
+    #     self.n_features_out_ = alpha_thres[2]
+
+    #     return self
 
     def transform(self, X: npt.ArrayLike) -> npt.ArrayLike:
         if hasattr(self, "alpha_indices_"):
@@ -425,26 +507,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
     def _more_tags(self):
         return {"stateless": True}
 
-    def setup_optimisation(self, loss_fn, opt, beta, opt_kwargs):
-        """
-        Sets up the loss function for the optimisation.
-        """
-        # beta = self.initialisation(p, key, init, Dxx, Dxy)
-        step_function, opt_state = self.set_optimizer(opt, loss_fn, beta, opt_kwargs)
-        return step_function, opt_state, beta
-
-    def set_optimizer(self, opt, loss_fn, beta, opt_kwargs):
-        optimizer = get_optimizer(opt, opt_kwargs)
-        opt_state = optimizer.init(beta)
-
-        def step(params, opt_state):
-            value, grads = value_and_grad(loss_fn)(params)
-            updates, opt_state = optimizer.update(grads, opt_state, params=params)
-            params = optax.apply_updates(params, updates)
-            return value, params, opt_state
-
-        return step, opt_state
-
     def marginal_screen(self, X, y, d):
 
         Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
@@ -452,78 +514,24 @@ class DCLasso(BaseEstimator, TransformerMixin):
 
         return screened_indices
 
-    def feature_feature_screen(self, X, y, d, penalty, key):
+    def feature_feature_screen(self, X, y, d, penalty, key, **pen_kwargs):
 
         self.compute_matrix(X, y)
-        # Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
-        # Dxx = self._compute_assoc(X, **self.ms_kwargs)
+        penalty_kwargs = {"name": f"{penalty}", "lamb": 5.0}
+        penalty_kwargs.update(**pen_kwargs)
+        beta = np.zeros(X.shape[1])
+        iteration = 0
+        while int(np.count_nonzero(beta)) < d and iteration < 5:
+            iteration += 1
+            penalty_kwargs["lamb"] /= 10
+            beta, _ = self.cvx_solve(penalty_kwargs)
+            if penalty_kwargs["name"] in ["scad", "mcp"]:
+                beta, _ = self.cvx_solve(penalty_kwargs, init_beta=beta)
 
-        # Default parameters
-        max_epoch = 200
-        eps_stop = 1e-8
-        # init = "from_convex_solve"
-        penalty_kwargs = {"name": f"{penalty}", "lamb": 0.5}
-        optimizer = "adam"
-        opt_kwargs = {
-            "init_value": 0.001,
-            "transition_steps": 100,
-            "decay_rate": 0.99,
-        }
-        loss_fn = partial(
-            loss, Dxy=self.Dxy, Dxx=self.Dxx, penalty_func=pic_penalty(penalty_kwargs)
-        )
-        beta, _, warm_start = self.cvx_solve(penalty_kwargs)
-        if warm_start:
-            step_function, opt_state, beta = self.setup_optimisation(
-                loss_fn, optimizer, beta, opt_kwargs
-            )
-            beta, _ = minimize_loss(
-                step_function,
-                opt_state,
-                beta,
-                max_epoch,
-                eps_stop,
-                verbose=self.verbose,
-            )
         screened_indices = selected_top_k(beta, d)
         return screened_indices
 
-    # def feature_feature_screen_nonzeros(self, X, y, d, penalty, key):
-
-    #     Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
-    #     Dxx = self._compute_assoc(X, **self.ms_kwargs)
-
-    #     # Default parameters
-    #     max_epoch = 150
-    #     eps_stop = 1e-8
-    #     init = "from_convex_solve"
-    #     penalty_kwargs = {"name": f"{penalty}", "lamb": 0.5}
-    #     optimizer = "adam"
-    #     opt_kwargs = {
-    #         "init_value": 0.001,
-    #         "transition_steps": 100,
-    #         "decay_rate": 0.99,
-    #     }
-    #     loss_fn = partial(
-    #         loss, Dxy=Dxy, Dxx=Dxx, penalty_func=pic_penalty(penalty_kwargs)
-    #     )
-    #     step_function, opt_state, beta = self.setup_optimisation(
-    #         loss_fn, optimizer, X.shape[1], key, init, Dxx, Dxy, opt_kwargs
-    #     )
-    #     beta, _ = minimize_loss(
-    #         step_function,
-    #         opt_state,
-    #         beta,
-    #         max_epoch,
-    #         eps_stop,
-    #         verbose=self.verbose,
-    #     )
-
-    #     nonzeros = np.where(beta != 0)[0]
-    #     screened_indices = beta.argsort()[-nonzeros.shape[0] :][::-1]
-    #     return screened_indices
-
-    def screen_split(self, X, y, n, p, n1, d, penalty, key):
+    def screen_split(self, X, y, n, p, n1, d, penalty, key, **pen_kwargs):
         """
         If needed, screen the features of X and y and split X, y.
         """
@@ -556,22 +564,15 @@ class DCLasso(BaseEstimator, TransformerMixin):
             # TODO what does this do?
             # Second screening in order to reduce even further the number of features
             # this time, it takes into account feature feature relations
-            screened_indices_2 = self.feature_feature_screen(X2, y2, d, penalty, key)
+            screened_indices_2 = self.feature_feature_screen(
+                X2, y2, d, penalty, key, **pen_kwargs
+            )
             X1 = X1[:, screened_indices_2]
             X2 = X2[:, screened_indices_2]
             screened_indices = screened_indices[screened_indices_2]
 
         else:
-            # if self.verbose:
-            #     print("Only non-zero screening")
-            # # screened_indices = np.arange(p)
-            # # TODO same as above
-            # screened_indices = self.feature_feature_screen_nonzeros(
-            #     X, y, d, penalty, key
-            # )
             d = screened_indices.shape[0]
-
-            # X = X[:, screened_indices]
 
             X1, y1 = np.zeros(shape=(0, d)), np.zeros(shape=(0,))
             X2, y2 = X, y
@@ -592,16 +593,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
             del self.ms_kwargs["precompute"]
 
     def compute_loss_fn(self, penalty_kwargs):
-
-        # self.ms_kwargs = precompute_kernels_match(
-        #     self.measure_stat, X, y, self.kernel, self.ms_kwargs, self.normalise_input
-        # )
-        # # made as self so that they can re-used for the
-        # # initialisation
-        # self.Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
-        # self.Dxx = self._compute_assoc(X, **self.ms_kwargs)
-
-        print(penalty_kwargs)
         loss_fn = partial(
             loss, Dxy=self.Dxy, Dxx=self.Dxx, penalty_func=pic_penalty(penalty_kwargs)
         )
