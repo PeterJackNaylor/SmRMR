@@ -313,7 +313,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
         beta, train_loss = self.minimize_loss_function(
             penalty_kwargs,
         )
-        if penalty != "None":
+        if penalty == "None":
             val_loss = float(loss_val(beta[:d]))
 
         self.beta_ = beta
