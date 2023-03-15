@@ -332,6 +332,13 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.alpha_indices_ = alpha_thres[0]
         self.t_alpha_ = alpha_thres[1]
         self.n_features_out_ = alpha_thres[2]
+        self.feature_score = self.wjs_[np.asarray(self.wjs_ >= self.t_alpha_)]
+        if not self.n_features_out_:
+            print("No features selected, taking best feat")
+            idx = np.argmax(self.wjs_)
+            self.alpha_indices_ = self.screen_indices_[idx : idx + 1]
+            self.feature_score = self.wjs_[idx : idx + 1]
+            self.n_features_out_ = 1
 
         return train_loss, val_loss
 

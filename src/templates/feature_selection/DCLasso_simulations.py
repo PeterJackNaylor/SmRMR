@@ -62,7 +62,7 @@ def main():
     if len(dl.alpha_indices_):
         selected_feats[np.array(dl.alpha_indices_)] = True
     best_feat = np.asarray(dl.alpha_indices_)
-    wj = np.asarray(dl.wjs_[np.asarray(dl.wjs_ >= dl.t_alpha_)])
+    wj = np.asarray(dl.feature_score)
 
     hp_dic = {}
     with open("hyperparameters_selection.dclasso.tsv", "a") as file:
