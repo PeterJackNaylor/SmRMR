@@ -2,6 +2,7 @@ from functools import partial
 
 # from collections.abc import Callable
 import numpy.typing as npt
+from numpy import asarray
 import jax.numpy as np
 from jax.lax import top_k
 from jax import random  # value_and_grad,
@@ -332,7 +333,8 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.alpha_indices_ = alpha_thres[0]
         self.t_alpha_ = alpha_thres[1]
         self.n_features_out_ = alpha_thres[2]
-        self.feature_score = self.wjs_[np.asarray(self.wjs_ >= self.t_alpha_)]
+        self.feature_score = self.wjs_[asarray(self.wjs_ >= self.t_alpha_)]
+
         if not self.n_features_out_:
             print("No features selected, taking best feat")
             idx = np.argmax(self.wjs_)
