@@ -41,7 +41,7 @@ class SklearnModel:
 
         X, y, featnames, selected = u.read_data(train_npz, scores_npz)
         self.model_input_features = selected
-        featnames = np.squeeze(featnames)
+        # featnames = np.squeeze(featnames)
         X_val, y_val, _, _ = u.read_data(val_npz, scores_npz)
         X = X[:, selected]
         X_val = X_val[:, selected]
@@ -61,7 +61,6 @@ class SklearnModel:
         scores = self.score_features()
         scores = u.sanitize_vector(scores)
         self_selected = self.select_features(scores)
-
         featnames = featnames[self_selected]
         selected_feats = np.zeros(shape=(selected.shape[0],), dtype=bool)
 
