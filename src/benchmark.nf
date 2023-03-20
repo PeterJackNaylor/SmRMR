@@ -89,7 +89,7 @@ process performance {
 
     input:
         each METRIC
-        tuple val(PARAMS), path(TEST_NPZ), path(CAUSAL_NPZ), path(SCORES_NPZ), path(PROBA_NPZ), path(PRED_NPZ)
+        tuple val(PARAMS), val(TEST_NPZ), val(CAUSAL_NPZ), val(SCORES_NPZ), val(PROBA_NPZ), val(PRED_NPZ)
 
     output:
         path 'performance.tsv'
