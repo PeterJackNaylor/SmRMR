@@ -16,7 +16,7 @@ process dclasso {
         val PARAMS_FILE
 
     output:
-        tuple val("feature_selection=DCLasso(${PENALTY});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
+        tuple val("feature_selection=DCLasso(${PENALTY},${model_tag});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
 
     when:
         (MS == "HSIC") || (KERNEL == "linear")
@@ -25,7 +25,7 @@ process dclasso {
         if (MS != "HSIC"){
             model_tag = MS
         } else {
-            model_tag = "${MS} (${KERNEL})"
+            model_tag = "${MS},${KERNEL}"
         }
         template "feature_selection/DCLasso_simulations.py"
 }

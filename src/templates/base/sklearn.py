@@ -89,8 +89,10 @@ class SklearnModel:
     def predict_proba(self, test_npz, scores_npz):
 
         X_test, _, _, _ = u.read_data(test_npz, scores_npz)
-
         y_proba = self.clf.predict_proba(X_test[:, self.model_input_features])
+        if len(y_proba.shape) > 1:
+            if y_proba.shape[1] == 2:
+                y_proba = y_proba[:, 1]
         u.save_proba_npz(y_proba, self.best_hyperparams)
 
     def predict(self, test_npz, scores_npz):
