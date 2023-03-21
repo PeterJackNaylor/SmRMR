@@ -95,7 +95,7 @@ process performance {
         path 'performance.tsv'
 
     when:
-        ("${PARAMS}".contains("linear") & "${METRIC.prediction}" == "regression") || (!("${PARAMS}".contains("linear")) & "${METRIC.prediction}" == "classification") || ("${METRIC.prediction}" == "both")
+        ("${PARAMS}".contains("linear") & "${METRIC.mode}" == "regression") || ("${PARAMS}".contains("categorical") & "${METRIC.mode}" == "classification") || ("${METRIC.mode}" == "both")
 
     script:
         template "performance/${METRIC.name}.py"

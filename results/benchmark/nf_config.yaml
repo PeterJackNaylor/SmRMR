@@ -72,12 +72,12 @@ prediction:
       alpha: [ 0.5, 1, 2 ]
 performance_metrics:
   - name: acc
-    prediction: classification
+    mode: classification
   - name: tpr_fpr
-    prediction: classification
+    mode: classification
   - name: features_tpr_fpr
-    prediction: both
+    mode: both
   - name: tpr_fpr
-    prediction: classification
+    mode: classification
   - name: mse
-    prediction: regression
+    mode: regression
