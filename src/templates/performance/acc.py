@@ -10,7 +10,6 @@ Output files:
 
 import numpy as np
 from sklearn.metrics import accuracy_score
-
 import utils as u
 
 _, y, _, _ = u.read_data("${TEST_NPZ}")
