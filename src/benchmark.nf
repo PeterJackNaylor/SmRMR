@@ -98,6 +98,7 @@ process performance {
         ("${PARAMS}".contains("linear") & "${METRIC.mode}" == "regression") || ("${PARAMS}".contains("categorical") & "${METRIC.mode}" == "classification") || ("${METRIC.mode}" == "both")
 
     script:
+        REDO=1
         template "performance/${METRIC.name}.py"
 
 }
@@ -114,7 +115,7 @@ process plot {
             tuple path(PERFORMANCE), path("*.png"), path("*.html")
 
         script:
-            py = file("src/templates/benchmark/line_plot.py")
+            py = file("src/templates/benchmark/bm_plot.py")
             """
             python $py $PERFORMANCE
             """
