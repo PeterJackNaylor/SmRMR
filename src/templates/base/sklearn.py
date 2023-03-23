@@ -98,7 +98,6 @@ class SklearnModel:
     def predict(self, test_npz, scores_npz):
 
         X_test, _, _, _ = u.read_data(test_npz, scores_npz)
-
         y_pred = self.clf.predict(X_test[:, self.model_input_features])
         u.save_preds_npz(y_pred, self.best_hyperparams)
 

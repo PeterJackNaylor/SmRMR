@@ -76,7 +76,7 @@ process prediction {
         tuple val("model=${MODEL.name};${PARAMS}"), path(TEST_NPZ), path(CAUSAL_NPZ), path("prediction_scores.npz"), path('y_proba.npz'), path('y_pred.npz')
 
     when:
-        ("${PARAMS}".contains("linear") & "${MODEL.prediction}" == "regression") || (!("${PARAMS}".contains("linear")) & "${MODEL.prediction}" == "classification")
+        ("${PARAMS}".contains(";data=linear") & "${MODEL.prediction}" == "regression") || ("${PARAMS}".contains(";data=nonlinear") & "${MODEL.prediction}" == "regression") || ("${PARAMS}".contains(";data=categorical") & "${MODEL.prediction}" == "classification")
 
     script:
         template "${MODEL.prediction}/${MODEL.name}.py"
@@ -95,10 +95,9 @@ process performance {
         path 'performance.tsv'
 
     when:
-        ("${PARAMS}".contains("linear") & "${METRIC.mode}" == "regression") || ("${PARAMS}".contains("categorical") & "${METRIC.mode}" == "classification") || ("${METRIC.mode}" == "both")
+        ("${PARAMS}".contains(";data=linear") & "${METRIC.mode}" == "regression") || ("${PARAMS}".contains(";data=nonlinear") & "${METRIC.mode}" == "regression") || ("${PARAMS}".contains(";data=categorical") & "${METRIC.mode}" == "classification") || ("${METRIC.mode}" == "both")
 
     script:
-        REDO=1
         template "performance/${METRIC.name}.py"
 
 }

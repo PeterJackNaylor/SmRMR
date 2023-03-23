@@ -16,7 +16,8 @@ _, y, _, _ = u.read_data("${TEST_NPZ}")
 y_proba = np.load("${PROBA_NPZ}")["proba"]
 
 try:
-    acc = accuracy_score(y, y_proba)
+    y_pred = (y_proba > 0.5).astype(int)
+    acc = accuracy_score(y, y_pred)
 except ValueError:
     acc = "NA"
 

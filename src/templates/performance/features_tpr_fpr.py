@@ -19,12 +19,23 @@ selected = np.load("${SCORES_NPZ}")["selected"]
 score = np.nan
 if len(causal):
     tn, fp, fn, tp = confusion_matrix(causal, selected, labels=[0, 1]).ravel()
-    tpr = tp / (tp + fn)
-    fpr = fp / (fp + tn)
-    fdr = fp / (tp + fp)
+    if tp + fn != 0:
+        tpr = tp / (tp + fn)
+    else:
+        tpr = "NA"
+
+    if fp + tn != 0:
+        fpr = fp / (fp + tn)
+    else:
+        fpr = 0
+
+    if tp + fp != 0:
+        fdr = fp / (tp + fp)
+    else:
+        fdr = 0
 
 else:
-    tpr = fpr = "NA"
+    tpr = fpr = fdr = "NA"
 
 u.save_analysis_tsv(
     run="${PARAMS}",
