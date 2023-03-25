@@ -34,4 +34,4 @@ class HSIC_object(AM):
         return hsic
 
 
-HSIC = HSIC_object()
+HSIC = HSIC_object(batch_size=500)
