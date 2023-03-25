@@ -8,6 +8,9 @@ include { simulation_train_validation_test } from './nf_core/data_workflows.nf'
 
 process dclasso {
     tag "model=DCLasso;data=${TAG});params=(${model_tag};${PENALTY})"
+    errorStrategy = 'retry'
+    maxRetries = 2
+
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ), path(TEST_NPZ)
         each MS
