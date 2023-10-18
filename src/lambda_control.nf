@@ -15,6 +15,7 @@ process lambda_control {
 
     input:
         tuple val(PARAMS), val(TAG), path(TRAIN_NPZ), path(CAUSAL_NPZ), path(VAL_NPZ)
+        // each
         val PARAMS_FILE
     output:
         path "performance.tsv"

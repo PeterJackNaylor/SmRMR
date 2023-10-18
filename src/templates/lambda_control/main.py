@@ -35,13 +35,13 @@ from lambda_control.lambda_control_utils import (
 
 key = random.PRNGKey(42)
 Cst = 1.5
-max_epoch = 1500
-eps_stop = 1e-8
-opt_kwargs = {
-    "init_value": 0.001,
-    "transition_steps": 100,
-    "decay_rate": 0.99,
-}
+# max_epoch = 1500
+# eps_stop = 1e-8
+# opt_kwargs = {
+#     "init_value": 0.001,
+#     "transition_steps": 100,
+#     "decay_rate": 0.99,
+# }
 
 am_kernels = ["HSIC", "cMMD"]
 
@@ -74,7 +74,8 @@ param_grid = {}
 f = open("${PARAMS_FILE}")
 param_grid = yaml.load(f, Loader=yaml.Loader)
 
-ms_list = param_grid["measure_stat"]
+ms_list = "${PARAMS_FILE}"
+param_grid["measure_stat"]
 kernel_list = param_grid["kernel"]
 penalty_list = param_grid["penalty"]
 optimizer_list = param_grid["optimizer"]
@@ -109,7 +110,7 @@ for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
         X,
         y,
         n1=n1,
-        max_epoch=max_epoch,
+        # max_epoch=max_epoch,
         penalty_kwargs=penalty_kwargs,
         optimizer=optimizer_list[0],
         conservative=conservative,
@@ -170,9 +171,9 @@ for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
             d,
             causal_feats,
             key,
-            max_epoch,
-            eps_stop,
-            opt_kwargs,
+            # max_epoch,
+            # eps_stop,
+            # opt_kwargs,
             Cst,
             penalty_kwargs,
             conservative,

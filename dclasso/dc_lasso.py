@@ -105,16 +105,16 @@ class DCLasso(BaseEstimator, TransformerMixin):
         n1: float,
         d: int = None,
         seed: int = 42,
-        max_epoch: int = 301,
-        eps_stop: float = 1e-8,
+        # max_epoch: int = 301,
+        # eps_stop: float = 1e-8,
         data_recycling: bool = True,
-        optimizer: str = "adam",
+        # optimizer: str = "adam",
         penalty_kwargs: dict = {"name": "l1", "lamb": 0.5},
-        opt_kwargs: dict = {
-            "init_value": 0.001,
-            "transition_steps": 100,
-            "decay_rate": 0.99,
-        },
+        # opt_kwargs: dict = {
+        #     "init_value": 0.001,
+        #     "transition_steps": 100,
+        #     "decay_rate": 0.99,
+        # },
         conservative: bool = True,
     ):
 
@@ -157,11 +157,11 @@ class DCLasso(BaseEstimator, TransformerMixin):
         self.compute_matrix(Xs, ys)
         self.beta_, value = self.minimize_loss_function(
             penalty_kwargs,
-            optimizer,
-            opt_kwargs,
-            max_epoch,
-            eps_stop,
-            key,
+            # optimizer,
+            # opt_kwargs,
+            # max_epoch,
+            # eps_stop,
+            # key,
         )
 
         self.wjs_ = self.beta_[:d] - self.beta_[d:]

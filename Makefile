@@ -27,6 +27,9 @@ lambda_control:
 benchmark:
 	$(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/$${FILENAME} -resume
 
+less_benchmark:
+	$(CONDA_ACTIVATE); nextflow src/LessJobs_benchmark.nf $(PROFILE) -params-file results/benchmark/$${FILENAME} -resume
+
 test:
 	$(CONDA_ACTIVATE); pytest test
 
