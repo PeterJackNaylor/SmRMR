@@ -204,7 +204,9 @@ if __name__ == "__main__":
 
         f_causal = f.replace("simulation", "causal")
         f_validation = f.replace("simulation", "simulation_val")
+        f_validation = "__".join(f_validation.split("__")[:-1]) + "__1.npz"
         f_test = f.replace("simulation", "simulation_test").replace(n_p, "*")
+        f_test = "__".join(f_test.split("__")[:-1]) + "__1.npz"
         f_test = glob(f_test)[0]
 
         X, y, featnames, selected = u.read_data(f)
