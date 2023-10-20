@@ -92,7 +92,7 @@ workflow models {
         metrics
         config_file
     main:
-        data.flatten().filter(~/.*?\.npz/).set{ all_npz }
+        data.flatten().filter(~/.*?\.npz/).unique().set{ all_npz }
         dclasso(all_npz.collect(), dclasso_ms, dclasso_kernel, dclasso_penalty, config_file)
         feature_selection(feature_selection_methods, all_npz.collect(), config_file)
         dclasso.out.concat(feature_selection.out).set{results}
