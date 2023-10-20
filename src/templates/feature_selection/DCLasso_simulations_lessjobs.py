@@ -171,10 +171,10 @@ if __name__ == "__main__":
 
     for i, f in enumerate(files):
 
-        data_name = f.split("__")[1]
-        results.loc[i, "name"] = data_name.split("-")[0]
+        data_name = f.split("__")[1].split("-")[0]
+        results.loc[i, "name"] = data_name
         results.loc[i, "rep"] = f.split("__")[-1].split(".")[0]
-        n_p = "-".join(data_name.split("-")[1:])
+        n_p = "-".join(f.split("__")[1].split("-")[1:])
         p = n_p.split("-")[1]
         results.loc[i, "n"] = n_p.split("-")[0]
         results.loc[i, "p"] = p
