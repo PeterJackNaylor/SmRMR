@@ -199,15 +199,13 @@ if __name__ == "__main__":
         results.loc[i, "name"] = data_name.split("-")[0]
         results.loc[i, "rep"] = f.split("__")[-1].split(".")[0]
         n_p = "-".join(data_name.split("-")[1:])
+        p = n_p.split("-")[1]
         results.loc[i, "n"] = n_p.split("-")[0]
-        results.loc[i, "p"] = n_p.split("-")[1]
+        results.loc[i, "p"] = p
 
         f_causal = f.replace("simulation", "causal")
-        f_validation = f.replace("simulation", "simulation_val")
-        f_validation = "__".join(f_validation.split("__")[:-1]) + "__1.npz"
-        f_test = f.replace("simulation", "simulation_test").replace(n_p, "*")
-        f_test = "__".join(f_test.split("__")[:-1]) + "__1.npz"
-        f_test = glob(f_test)[0]
+        f_validation = glob(f"simulation_val__{data_name}-*-{p}__1.npz")[0]
+        f_test = glob(f"simulation_test__{data_name}-*-{p}__1.npz")[0]
 
         X, y, featnames, selected = u.read_data(f)
         X_val, y_val, _, _ = u.read_data(f_validation)
