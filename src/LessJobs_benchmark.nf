@@ -10,7 +10,8 @@ process dclasso {
     tag "model=DCLasso);params=(${model_tag};${PENALTY})"
     errorStrategy = 'retry'
     maxRetries = 2
-
+    beforeScript "source /home/pnaylor/NN-CD/GPU_LOCKS/set_gpu.sh /home/pnaylor/NN-CD/"
+    afterScript "source /home/pnaylor/NN-CD/GPU_LOCKS/free_gpu.sh /home/pnaylor/NN-CD/"
     input:
         path ALL
         each MS
