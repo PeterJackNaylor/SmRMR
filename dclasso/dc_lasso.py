@@ -129,7 +129,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
         y = np.asarray(y)
 
         self.n_features_in_ = p
-
         # we have to prescreen and split if needed
         X2, y2, X1, y1, self.screen_indices_, d = self.screen_split(
             X,
@@ -141,7 +140,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
             penalty_kwargs["name"],
             key,
         )
-
         # Compute knock-off variables
         Xhat = get_equi_features(X2, key)
 
@@ -227,8 +225,12 @@ class DCLasso(BaseEstimator, TransformerMixin):
         value = result
 
         # set to 0 values that are too small with respect to the rest
-        threshold = float(np.abs(beta).max()) / 1e5
-        beta[beta < threshold] = 0
+        if beta is None:
+            beta = 0
+            value = np.inf
+        else:
+            threshold = float(np.abs(beta).max()) / 1e5
+            beta[beta < threshold] = 0
 
         return beta, value
 
@@ -263,11 +265,11 @@ class DCLasso(BaseEstimator, TransformerMixin):
         assert p == X_val.shape[1]
 
         self.n_features_in_ = p
-
+        print("pif")
         X2, y2, X1, y1, screen_indices, d = self.screen_split(
             X, y, n, p, n1, d, penalty, key, **pen_kwargs
         )
-
+        print("paf")
         Xhat = get_equi_features(X2, key)
 
         if data_recycling:
@@ -517,7 +519,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
         return {"stateless": True}
 
     def marginal_screen(self, X, y, d):
-
         Dxy = self._compute_assoc(X, y, **self.ms_kwargs)
         screened_indices = top_k(Dxy, d)[1]
 
@@ -564,7 +565,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
             # if too many features, select the top K = 4 * d
             # First marginal screening
             # TODO rename d=? and p=n_features?
-
             if 4 * d < p:
                 screened_indices = self.marginal_screen(X1, y1, 4 * d)
                 X1 = X1[:, screened_indices]

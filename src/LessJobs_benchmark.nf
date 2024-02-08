@@ -97,6 +97,7 @@ workflow models {
         feature_selection(feature_selection_methods, all_npz.collect(), config_file)
         dclasso.out.concat(feature_selection.out).set{results}
         table_and_plot(results.collect())
+
     //     dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
     //     prediction(prediction_methods, feature_selection_model, config_file)
 
