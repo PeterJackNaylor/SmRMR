@@ -23,7 +23,7 @@ process dclasso {
         path("results*.csv")
 
     when:
-        (MS == "HSIC") || (KERNEL == "linear")
+        (MS == "HSIC") || (KERNEL == "gaussian")
 
     script:
         pyfile = file("src/templates/feature_selection/DCLasso_simulations_lessjobs.py")
@@ -94,9 +94,9 @@ workflow models {
     main:
         data.flatten().filter(~/.*?\.npz/).unique().set{ all_npz }
         dclasso(all_npz.collect(), dclasso_ms, dclasso_kernel, dclasso_penalty, config_file)
-        feature_selection(feature_selection_methods, all_npz.collect(), config_file)
-        dclasso.out.concat(feature_selection.out).set{results}
-        table_and_plot(results.collect())
+        // feature_selection(feature_selection_methods, all_npz.collect(), config_file)
+        // dclasso.out.concat(feature_selection.out).set{results}
+        table_and_plot(dclasso.out.collect())
 
     //     dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
     //     prediction(prediction_methods, feature_selection_model, config_file)
@@ -113,6 +113,8 @@ workflow {
             params.simulation_models, params.simulation_np, params.validation_samples,
             params.test_samples, params.repeat
         )
+	println(params.measure_stat)
+	println(params.kernel)
         models(
             simulation_train_validation_test_unique.out, params.feature_selection, params.prediction,
             params.measure_stat, params.kernel, params.penalty, params.performance_metrics,

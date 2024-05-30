@@ -17,7 +17,7 @@ simulation_models:
 - nonlinear_3
 penalty: [scad, mcp, l1, None]
 kernel: [laplacian, gaussian]
-measure_stat: [PC, HSIC]
+measure_stat: [PC]
 dclasso:
   - name: dclasso
     parameters:
@@ -31,10 +31,10 @@ feature_selection:
   - name: hsic_lasso
     parameters:
       num_features: [5, 10, 15, 20, 25, 30]
-  - name: mrmr
-    parameters:
-      criteria: [MIQ, MID]
-      num_features: [5, 10, 15, 20, 25, 30]
+  # - name: mrmr
+  #  parameters:
+  #    criteria: [MIQ, MID]
+  #    num_features: [5, 10, 15, 20, 25, 30]
 prediction:
   # - name: gbdt
   #   prediction: classification
