@@ -33,12 +33,12 @@ if len(causal):
         fdr = fp / (tp + fp)
     else:
         fdr = 0
-
+    n_selected = selected.sum()
 else:
-    tpr = fpr = fdr = "NA"
+    tpr = fpr = fdr = n_selected = "NA"
 
 u.save_analysis_tsv(
     run="${PARAMS}",
-    metric=["tpr_causal", "fpr_causal", "fdr_causal"],
-    value=[tpr, fpr, fdr],
+    metric=["tpr_causal", "fpr_causal", "fdr_causal", "n_selected"],
+    value=[tpr, fpr, fdr, n_selected],
 )
