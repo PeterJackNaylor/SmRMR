@@ -40,6 +40,10 @@ def read_adjacency(A_npz: str):
 
     return load_npz(A_npz)
 
+def get_fold(params_yaml: str):
+    f = open(params_yaml)
+    file = yaml.load(f, Loader=yaml.Loader)
+    return file["folds"]
 
 def read_parameters(params_yaml: str, algo_type: str, algo_name: str) -> dict:
 

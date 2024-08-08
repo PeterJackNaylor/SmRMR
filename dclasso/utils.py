@@ -80,7 +80,11 @@ def orthonormalize_qr(X):
 def shift_until_PSD(M, tol):
     """Add the identity until a p x p matrix M has eigenvalues of at least tol"""
     p = M.shape[0]
-    mineig = float(eigsh(np.array(M), k=1, which="SA")[0].squeeze())
+    try:
+        mineig = float(eigsh(np.array(M), k=1, which="SA")[0].squeeze())
+    except:
+        print("PSD transformation failling")
+        mineig = float(eigsh(np.array(M) + tol, k=1, which="SA")[0].squeeze())
     if mineig < tol:
         M = M + (tol - mineig) * np.eye(p)
     return M

@@ -30,6 +30,7 @@ from .utils import (
     selected_top_k,
     precompute_kernels_match,
     alpha_threshold,
+    shift_until_PSD,
     # gene_generators,
 )
 
@@ -216,6 +217,7 @@ class DCLasso(BaseEstimator, TransformerMixin):
             case "scad" | "mcp":
                 lamb_theta = pic_derivative(pen_kwargs)(init_beta)
                 reg = cp.sum(lamb_theta @ cp.abs(theta))
+        self.Dxx = shift_until_PSD(self.Dxx, 0.0001)
         objective = cp.Minimize(
             -self.Dxy.T @ theta + 0.5 * cp.quad_form(theta, self.Dxx) + reg
         )
@@ -265,11 +267,9 @@ class DCLasso(BaseEstimator, TransformerMixin):
         assert p == X_val.shape[1]
 
         self.n_features_in_ = p
-        print("pif")
         X2, y2, X1, y1, screen_indices, d = self.screen_split(
             X, y, n, p, n1, d, penalty, key, **pen_kwargs
         )
-        print("paf")
         Xhat = get_equi_features(X2, key)
 
         if data_recycling:
@@ -345,129 +345,6 @@ class DCLasso(BaseEstimator, TransformerMixin):
             self.n_features_out_ = 1
 
         return train_loss, val_loss
-
-    # def cv_fit2(
-    #     self,
-    #     X: npt.ArrayLike,
-    #     y: npt.ArrayLike,
-    #     X_val: npt.ArrayLike,
-    #     y_val: npt.ArrayLike,
-    #     param_grid: dict,
-    #     n1: float,
-    #     d: int = None,
-    #     seed: int = 42,
-    #     max_epoch: int = 301,
-    #     eps: float = 1e-6,
-    #     data_recycling: bool = False,
-    #     refit: bool = True,
-    #     conservative: bool = True,
-    # ):
-    #     self.verbose = True
-    #     key = random.PRNGKey(seed)
-    #     X, y = check_X_y(X, y)
-    #     X = np.asarray(X)
-    #     y = np.asarray(y)
-    #     X_val, y_val = check_X_y(X_val, y_val)
-    #     y_val = np.asarray(y_val)
-    #     X_val = np.asarray(X_val)
-    #     n, p = X.shape
-    #     (ny,) = y.shape
-    #     assert n == ny
-    #     assert X_val.shape[0] == y_val.shape[0]
-    #     assert p == X_val.shape[1]
-
-    #     self.n_features_in_ = p
-
-    #     generator_ms_kernel, hyperparameter_generator = gene_generators(
-    #         param_grid, kernel_ms
-    #     )
-
-    #     train_scores = []
-    #     validation_scores = []
-    #     dict_hp = {}
-    #     betas = {}
-    #     id_ = 0
-    #     for ms, kernel in generator_ms_kernel():
-    #         self.measure_stat = ms
-    #         self.kernel = kernel
-    #         # we have to prescreen and split if needed
-    #         X2, y2, X1, y1, screen_indices, d = self.screen_split(
-    #             X,
-    #             y,
-    #             n,
-    #             p,
-    #             n1,
-    #             d,
-    #             "scad", # "None"
-    #             key,
-    #         )
-
-    #         # Compute knock-off variables
-    #         Xhat = get_equi_features(X2, key)
-
-    #         if data_recycling:
-    #             X1_tild = np.concatenate([X1, X1], axis=1)
-    #             X2_tild = np.concatenate([X2, Xhat], axis=1)
-    #             Xs = np.concatenate([X1_tild, X2_tild], axis=0)
-    #             ys = np.concatenate([y1, y2], axis=0)
-    #         else:
-    #             Xs = np.concatenate([X2, Xhat], axis=1)
-    #             ys = y2
-
-    #         self.compute_matrix(Xs, ys)
-
-    #         Dxy_val = self._compute_assoc(
-    #             X_val[:, screen_indices], y_val, **self.ms_kwargs
-    #         )
-    #         Dxx_val = self._compute_assoc(X_val[:, screen_indices], **self.ms_kwargs)
-    #         val_penalty = {"name": "None"}
-    #         loss_val = partial(
-    #             loss, Dxy=Dxy_val, Dxx=Dxx_val, penalty_func=pic_penalty(val_penalty)
-    #         )
-
-    #         for hyper in hyperparameter_generator():
-    #             hyper["ms"] = ms
-    #             hyper["kernel"] = kernel
-    #             if self.verbose:
-    #                 print(hyper)
-
-    #             optimizer = hyper["optimizer"]
-    #             penalty_kwargs = hyper["penalty_kwargs"]
-    #             opt_kwargs = hyper["opt_kwargs"]
-
-    #             beta, train_loss = self.minimize_loss_function(
-    #                 penalty_kwargs, optimizer, opt_kwargs, max_epoch, eps
-    #             )
-    #             validation_loss = float(loss_val(beta[:d]))
-    #             train_scores.append(train_loss)
-    #             validation_scores.append(validation_loss)
-    #             dict_hp[id_] = hyper
-    #             betas[id_] = (beta, screen_indices, d)
-    #             id_ += 1
-
-    #     self.train_scores = train_scores
-    #     self.validation_scores = validation_scores
-    #     self.best_run = argmin_lst(self.validation_scores)
-    #     self.best_hp = dict_hp[self.best_run]
-    #     beta, screen_indices, d = betas[self.best_run]
-    #     self.beta_ = beta
-    #     self.screen_indices_ = screen_indices
-    #     self.wjs_ = self.beta_[:d] - self.beta_[d:]
-    #     alpha_thres = alpha_threshold(
-    #         self.alpha,
-    #         self.wjs_,
-    #         self.screen_indices_,
-    #         hard_alpha=self.hard_alpha,
-    #         alpha_increase=self.alpha_increase,
-    #         conservative=conservative,
-    #         verbose=self.verbose,
-    #     )
-
-    #     self.alpha_indices_ = alpha_thres[0]
-    #     self.t_alpha_ = alpha_thres[1]
-    #     self.n_features_out_ = alpha_thres[2]
-
-    #     return self
 
     def transform(self, X: npt.ArrayLike) -> npt.ArrayLike:
         if hasattr(self, "alpha_indices_"):

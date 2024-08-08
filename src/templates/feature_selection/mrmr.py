@@ -44,7 +44,6 @@ criteria = param_grid["criteria"]
 num_feat = param_grid["num_features"]
 
 max_score = np.inf
-model = None
 best_hyperparameter = None
 best_feats = None
 list_hyperparameter = list(itertools.product(criteria, num_feat))
@@ -56,7 +55,6 @@ for hp in list_hyperparameter:
     X_val_tmp = X_val[selected_feat]
     val_score = u.evaluate_function(X_tmp, y, X_val_tmp, y_val, mode)
     if val_score < max_score:
-        best_model = model
         best_hyperparameter = hp
         max_score = val_score
         best_feats = selected_feat

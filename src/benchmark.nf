@@ -22,7 +22,7 @@ process dclasso {
         tuple val("feature_selection=DCLasso(${PENALTY},${model_tag});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
 
     when:
-        (MS == "HSIC") || (KERNEL == "linear")
+        (MS == "HSIC") || (KERNEL == "gaussian")
 
     script:
         if (MS != "HSIC"){
@@ -114,10 +114,10 @@ process plot {
             path PERFORMANCE
 
         output:
-            tuple path(PERFORMANCE), path("*.png"), path("*.html")
+            tuple path(PERFORMANCE), path("png"), path("html"), path("png2"), path("html2"), path("tex"), path("csv")
 
         script:
-            py = file("src/templates/benchmark/bm_plot.py")
+            py = file("src/templates/benchmark/plots_paper.py")
             """
             python $py $PERFORMANCE
             """

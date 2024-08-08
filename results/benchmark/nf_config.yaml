@@ -1,22 +1,22 @@
 config_path: results/benchmark/nf_config.yaml
 out: results/benchmark
-repeat: 100
-simulation_np: [[100, 100], [100, 500], [100, 5000], [500, 5000]] #, [500, 100], [500, 500], [500, 5000], [1000, 5000]]
-validation_samples: [[100, 100], [100, 500], [100, 5000]]
-test_samples: [[10000, 100], [10000, 500], [10000, 5000]]
+repeat: 2
+simulation_np: [[100, 100], [100, 500], [100, 5000]] #, [500, 100], [500, 500], [500, 5000], [1000, 5000]]
+validation_samples: [[100, 100], [100, 500]]
+test_samples: [[10000, 100], [10000, 500]]
 simulation_models:
 - linear_00
-- linear_0
-- linear_1
-- linear_2
-- categorical_0
-- categorical_1
-- categorical_2
-- nonlinear_1
-- nonlinear_2
-- nonlinear_3
+# - linear_0
+# - linear_1
+# - linear_2
+# - categorical_0
+# - categorical_1
+# - categorical_2
+# - nonlinear_1
+# - nonlinear_2
+# - nonlinear_3
 penalty: [scad, mcp, l1, None]
-kernel: [laplacian, gaussian]
+kernel: [gaussian]
 measure_stat: [PC, HSIC]
 dclasso:
   - name: dclasso
