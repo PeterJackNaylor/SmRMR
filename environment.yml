@@ -17,6 +17,7 @@ dependencies:
   - libblas=*=*_mkl
   - nextflow
   - pip
+  - pre-commit
   - pytest
   - python=3.10
   - r-irkernel

@@ -37,7 +37,7 @@ test:
 	$(CONDA_ACTIVATE); pytest test
 
 $(CONDA_ENV): environment.yml
-	mamba env create --force --prefix $(CONDA_ENV) --file environment.yml
+	mamba env create --prefix $(CONDA_ENV) --file environment.yml
 
 jupyter:
 	$(CONDA_ACTIVATE); export PYTHONPATH=`pwd`:$${PYTHONPATH}; jupyter lab --notebook-dir=notebooks/
