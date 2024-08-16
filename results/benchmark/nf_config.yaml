@@ -16,17 +16,14 @@ simulation_models:
 # - nonlinear_2
 # - nonlinear_3
 penalty: [scad, mcp, l1, None]
-kernel: [gaussian]
-measure_stat: [PC, HSIC]
+kernel: [gaussian, linear]
+measure_stat: [HSIC, PC]
 dclasso:
   - name: dclasso
     parameters:
       alpha: 0.3
       n1: 0.5
       lambda: [1e-5, 1e1]
-      # epoch: 150
-      # optimizer: [adam]
-      # lr: [1.e-4, 1.e-3, 1.e-2]
 feature_selection:
   - name: hsic_lasso
     parameters:
