@@ -26,14 +26,14 @@ from sklearn.model_selection import StratifiedKFold
 import itertools
 
 def fit_mrmr(X, y, X_val, y_val, list_hyperparameter, mode):
-    max_score = np.inf
+    max_score = -np.inf
     for hp in list_hyperparameter:
         selected_feat = pymrmr.mRMR(X, hp[0], hp[1])
 
         X_tmp = X[selected_feat]
         X_val_tmp = X_val[selected_feat]
         val_score = u.evaluate_function(X_tmp, y, X_val_tmp, y_val, mode)
-        if val_score < max_score:
+        if val_score > max_score:
             max_score = val_score
             best_feats = selected_feat
     return best_feats
@@ -65,7 +65,7 @@ def main():
 
     df = DataFrame(selected_feats, columns=["${MODEL.name}"])
     df = df[df["${MODEL.name}"] != 0]
-    df.to_csv("selected_features.csv")
+    df.to_csv("${MODEL.name}.csv")
 
 if __name__ == "__main__":
     main()

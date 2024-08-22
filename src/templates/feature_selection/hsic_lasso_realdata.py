@@ -25,7 +25,7 @@ def fit_hsic_lasso(X, y, X_val, y_val, featnames, num_feat, mode):
     hl = HSICLasso()
     hl.input(X.values, y, featname=featnames)
     p = X.shape[1]
-    max_score = np.inf
+    max_score = -np.inf
     for nfeat in num_feat:
         if mode == "categorical":
             hl.classification(nfeat)
@@ -37,7 +37,7 @@ def fit_hsic_lasso(X, y, X_val, y_val, featnames, num_feat, mode):
         X_tmp = X.loc[:, selected_feats]
         X_val_tmp = X_val.loc[:, selected_feats]
         val_score = u.evaluate_function(X_tmp, y, X_val_tmp, y_val, mode)
-        if val_score < max_score:
+        if val_score > max_score:
             max_score = val_score
             best_feats = selected_feats
     return best_feats
