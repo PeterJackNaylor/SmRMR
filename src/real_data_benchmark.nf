@@ -4,8 +4,9 @@ CWD = System.getProperty("user.dir")
 data_files = files(params.data_location + "/*.npz")
 
 process dclasso {
+    time '1d'
     tag "model=DCLasso;data=${TAG});params=(${model_tag};${PENALTY})"
-    // errorStrategy = 'retry'
+    errorStrategy = 'ignore'
     // maxRetries = 2
 
     input:
@@ -34,7 +35,8 @@ process dclasso {
 }
 
 process feature_selection {
-
+    time '3h'
+    errorStrategy = 'ignore'
     tag "feature_selection=${MODEL.name};data=${TAG})"
 
     input:
