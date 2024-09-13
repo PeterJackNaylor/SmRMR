@@ -35,7 +35,7 @@ process dclasso {
 }
 
 process feature_selection {
-    time '3h'
+    time '24h'
     errorStrategy = 'ignore'
     tag "feature_selection=${MODEL.name};data=${TAG})"
 
