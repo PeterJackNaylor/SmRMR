@@ -52,21 +52,36 @@ def main():
     num_feat = param_grid["num_features"]
     folds = u.get_fold("${PARAMS_FILE}")
     selected_feats = DataFrame(index=featnames, columns=["${MODEL.name}"], dtype=int).fillna(0)
+    scores = []
     for r in range(int("${REPEATS}")):
         skf = StratifiedKFold(n_splits=folds, shuffle=True)
         
         for i, (train_index, test_index) in enumerate(skf.split(X, y)):
-            X_train, y_train = X.loc[train_index], y[train_index]
-            X_val, y_val = X.loc[test_index], y[test_index]
-            
-            feats = fit_hsic_lasso(X_train, y_train, X_val, y_val,  featnames, num_feat, mode)
+            X_, y_ = X.loc[train_index], y[train_index]
+            X_test, y_test = X.loc[test_index], y[test_index]
 
-            if len(feats):
-                selected_feats.loc[feats, "${MODEL.name}"] += 1
-          
+            choosen_feats  = []
+            for j, (train_index2, val_index) in enumerate(skf.split(X_, y_)):
+                X_train, y_train = X.loc[train_index2], y[train_index2]
+                X_val, y_val = X.loc[val_index], y[val_index]
+
+                feats = fit_hsic_lasso(X_train, y_train, X_val, y_val,  featnames, num_feat, mode)
+
+                if len(feats):
+                    selected_feats.loc[feats, "${MODEL.name}"] += 1
+                choosen_feats.append(feats)
+            union_list = u.union_lists(*choosen_feats)
+            X_train_tmp = X_.loc[:, union_list]
+            X_test_tmp = X_test.loc[:, union_list]
+            test_score = u.evaluate_function(X_train_tmp, y_, X_test_tmp, y_test, mode)
+            scores.append(test_score)
+
     df = DataFrame(selected_feats, columns=["${MODEL.name}"])
     df = df[df["${MODEL.name}"] != 0]
     df.to_csv("${MODEL.name}.csv")
-
+    file = open('${MODEL.name}_scores.txt','w')
+    for s in scores:
+        file.write(s+"\\n")
+    file.close()
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
 import random
 import sys
 import traceback
+import itertools
 
 import numpy as np
 import numpy.typing as npt
@@ -201,3 +202,14 @@ def evaluate_function(X, y, X_val, y_val, mode="classification"):
     model, eval_func = model_eval(mode)
     model.fit(X, y)
     return eval_func(model.predict(X_val), y_val)
+
+def union_lists(*lists):
+     
+    concatenated_list = list(itertools.chain(*lists))
+     
+    # use the set() function to remove duplicates and convert the concatenated list to a set
+    unique_set = set(concatenated_list)
+     
+    # convert the set back to a list and return it as the final union
+    final_union = list(unique_set)
+    return final_union

@@ -18,7 +18,7 @@ process dclasso {
         val PARAMS_FILE
 
     output:
-        tuple val("data=${TAG}"), path("${METHOD}.csv")
+        tuple val("data=${TAG}"), path("${METHOD}.csv"), path("*_scores.txt")
 
     when:
         (MS == "HSIC") || (KERNEL == "gaussian")
@@ -46,7 +46,7 @@ process feature_selection {
         val PARAMS_FILE
 
     output:
-        tuple val("data=${TAG}"), path("${MODEL.name}.csv")
+        tuple val("data=${TAG}"), path("${MODEL.name}.csv"), path("*_scores.txt")
 
     script:
         TAG = DATA_NPZ.getBaseName()
@@ -54,16 +54,16 @@ process feature_selection {
 
 }
 
-process groupCSV {
+process groupCSVandTXT {
     publishDir "${params.out}/selected_features", mode: 'symlink'
     input:
-        tuple val(data), path(CSV)
+        tuple val(data), path(CSV), path(TXT)
     output:
         path("${data_name}.csv")
     
     script:
         data_name = "${data}".split("=")[1]
-        py = file("src/templates/real_data_group_csv.py")
+        py = file("src/templates/real_data_group_csv_and_txt.py")
         """
         python $py $data_name
         
@@ -92,7 +92,7 @@ workflow models {
         dclasso.out .concat(feature_selection.out) .set{selected_features}
         selected_features.groupTuple().set{csv_tables}
 
-        groupCSV(csv_tables)
+        groupCSVandTXT(csv_tables)
         // prediction(prediction_methods, feature_selection_model, config_file)
 
 
