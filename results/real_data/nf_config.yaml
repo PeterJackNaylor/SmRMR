@@ -1,7 +1,7 @@
 config_path: results/real_data/nf_config.yaml
 out: results/real_data
 data_location: ../dclasso_datasets
-folds: 3
+folds: 5
 repeat: 10
 penalty: [scad, mcp, l1, None]
 kernel: [gaussian]

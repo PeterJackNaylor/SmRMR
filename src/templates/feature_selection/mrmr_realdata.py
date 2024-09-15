@@ -63,18 +63,21 @@ def main():
             for j, (train_index2, val_index) in enumerate(skf.split(X_, y_)):
                 X_train, y_train = X.loc[train_index2], y[train_index2]
                 X_val, y_val = X.loc[val_index], y[val_index]
+                try:
+                    feats = fit_mrmr(X_train, y_train, X_val, y_val, list_hyperparameter, mode)
 
-                feats = fit_mrmr(X_train, y_train, X_val, y_val, list_hyperparameter, mode)
 
-
-                if len(feats):
-                    selected_feats.loc[feats, "${MODEL.name}"] += 1
-                choosen_feats.append(feats)
-            union_list = u.union_lists(*choosen_feats)
-            X_train_tmp = X_.loc[:, union_list]
-            X_test_tmp = X_test.loc[:, union_list]
-            test_score = u.evaluate_function(X_train_tmp, y_, X_test_tmp, y_test, mode)
-            scores.append(test_score)
+                    if len(feats):
+                        selected_feats.loc[feats, "${MODEL.name}"] += 1
+                    choosen_feats.append(feats)
+                except:
+                    pass
+            if choosen_feats:
+                union_list = u.union_lists(*choosen_feats)
+                X_train_tmp = X_.loc[:, union_list]
+                X_test_tmp = X_test.loc[:, union_list]
+                test_score = u.evaluate_function(X_train_tmp, y_, X_test_tmp, y_test, mode)
+                scores.append(test_score)
     df = DataFrame(selected_feats, columns=["${MODEL.name}"])
     df = df[df["${MODEL.name}"] != 0]
     df.to_csv("${MODEL.name}.csv")
