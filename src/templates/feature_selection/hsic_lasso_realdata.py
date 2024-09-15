@@ -66,7 +66,7 @@ def main():
                 X_val, y_val = X.loc[val_index], y[val_index]
                 try:
                     feats = fit_hsic_lasso(X_train, y_train, X_val, y_val,  featnames, num_feat, mode)
-
+                    feats = np.arange(feats.shape[0])[feats]
                     if len(feats):
                         selected_feats.loc[feats, "${MODEL.name}"] += 1
 
