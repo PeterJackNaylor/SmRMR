@@ -76,7 +76,7 @@ def main():
                 X_train_tmp = X_.loc[:, union_list]
                 X_test_tmp = X_test.loc[:, union_list]
                 test_score = u.evaluate_function(X_train_tmp, y_, X_test_tmp, y_test, mode)
-                scores.append(test_score)
+                scores.append(1 - test_score)
 
     df = DataFrame(selected_feats, columns=["${METHOD}"])
     df = df[df["${METHOD}"] != 0]

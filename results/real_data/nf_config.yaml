@@ -3,9 +3,9 @@ out: results/real_data
 data_location: ../dclasso_datasets
 folds: 5
 repeat: 10
-penalty: [scad, mcp, l1, None]
+penalty: [scad] #, mcp, l1, None]
 kernel: [gaussian]
-measure_stat: [HSIC, PC] # 
+measure_stat: [HSIC] #HSIC, PC] # 
 dclasso:
   - name: dclasso
     parameters:
@@ -18,11 +18,11 @@ dclasso:
 feature_selection:
   - name: hsic_lasso
     parameters:
-      num_features: [5, 10, 15]
+      num_features: [5, 10, 15, 20, 25]
   - name: mrmr
     parameters:
-      criteria: [MIQ, MID]
-      num_features: [5, 10, 15]
+      criteria: [MIQ] #
+      num_features: [5, 15, 25]
 prediction:
   # - name: gbdt
   #   prediction: classification

@@ -12,7 +12,7 @@ from scipy.sparse import load_npz
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import mean_squared_error, accuracy_score
 
-
+from sklearn.ensemble import RandomForestClassifier
 # Input functions
 ###########################
 def read_data(data_npz: str, selected_npz: str = ""):
@@ -190,7 +190,8 @@ def determine_mode(name: str):
 
 def model_eval(mode):
     if mode == "classification":
-        model = LogisticRegression()
+        # model = LogisticRegression()
+        model = RandomForestClassifier()
         eval_func = minus_accuracy_score
     else:
         model = LinearRegression()

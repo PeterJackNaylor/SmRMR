@@ -25,7 +25,7 @@ def fit_hsic_lasso(X, y, X_val, y_val, featnames, num_feat, mode):
     hl = HSICLasso()
     hl.input(X.values, y, featname=featnames)
     p = X.shape[1]
-    max_score = -np.inf
+    max_score = np.inf
     for nfeat in num_feat:
         if mode == "categorical":
             hl.classification(nfeat)
@@ -37,7 +37,7 @@ def fit_hsic_lasso(X, y, X_val, y_val, featnames, num_feat, mode):
         X_tmp = X.loc[:, selected_feats]
         X_val_tmp = X_val.loc[:, selected_feats]
         val_score = u.evaluate_function(X_tmp, y, X_val_tmp, y_val, mode)
-        if val_score > max_score:
+        if val_score < max_score:
             max_score = val_score
             best_feats = selected_feats
     return best_feats
@@ -68,9 +68,9 @@ def main():
                     feats = fit_hsic_lasso(X_train, y_train, X_val, y_val,  featnames, num_feat, mode)
                     feats = np.arange(feats.shape[0])[feats]
                     if len(feats):
-                        selected_feats.loc[feats, "${MODEL.name}"] += 1
+                        selected_feats.loc[feats.astype(str), "${MODEL.name}"] += 1
 
-                    choosen_feats.append(feats)
+                    choosen_feats.append(feats.astype(str))
                 except:
                     pass
             if choosen_feats:
@@ -78,14 +78,14 @@ def main():
                 X_train_tmp = X_.loc[:, union_list]
                 X_test_tmp = X_test.loc[:, union_list]
                 test_score = u.evaluate_function(X_train_tmp, y_, X_test_tmp, y_test, mode)
-                scores.append(test_score)
+                scores.append(1 - test_score)
 
     df = DataFrame(selected_feats, columns=["${MODEL.name}"])
     df = df[df["${MODEL.name}"] != 0]
     df.to_csv("${MODEL.name}.csv")
     file = open('${MODEL.name}_scores.txt','w')
     for s in scores:
-        file.write(s+"\\n")
+        file.write(f"{s}\\n")
     file.close()
 if __name__ == "__main__":
     main()
