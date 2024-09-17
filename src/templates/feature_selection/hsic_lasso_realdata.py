@@ -68,6 +68,7 @@ def main():
                     feats = fit_hsic_lasso(X_train, y_train, X_val, y_val,  featnames, num_feat, mode)
                     feats = np.arange(feats.shape[0])[feats]
                     if len(feats):
+                        feats = featnames[feats]
                         selected_feats.loc[feats.astype(str), "${MODEL.name}"] += 1
 
                     choosen_feats.append(feats.astype(str))

@@ -68,6 +68,7 @@ def main():
 
 
                     if len(feats):
+                        feats = featnames[feats]
                         selected_feats.loc[feats, "${MODEL.name}"] += 1
                     choosen_feats.append(feats)
                 except:

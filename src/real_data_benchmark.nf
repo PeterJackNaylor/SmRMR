@@ -59,7 +59,7 @@ process groupCSVandTXT {
     input:
         tuple val(data), path(CSV), path(TXT)
     output:
-        path("${data_name}.csv")
+        tuple path("${data_name}.csv"), path("${data_name}_scores.csv")
     
     script:
         data_name = "${data}".split("=")[1]
