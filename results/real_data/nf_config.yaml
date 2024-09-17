@@ -2,8 +2,8 @@ config_path: results/real_data/nf_config.yaml
 out: results/real_data
 data_location: ../dclasso_datasets
 folds: 5
-repeat: 1
-penalty: [scad] #, mcp, l1, None]
+repeat: 10
+penalty: [scad, mcp, l1, None]
 kernel: [gaussian]
 measure_stat: [HSIC] #HSIC] #, PC] # 
 dclasso:
@@ -19,10 +19,10 @@ feature_selection:
   - name: hsic_lasso
     parameters:
       num_features: [5, 10, 15, 20, 25]
-  # - name: mrmr
-  #   parameters:
-  #     criteria: [MIQ] #
-  #     num_features: [5, 15, 25]
+  - name: mrmr
+    parameters:
+      criteria: [MIQ] #
+      num_features: [5, 15, 25]
 prediction:
   # - name: gbdt
   #   prediction: classification
