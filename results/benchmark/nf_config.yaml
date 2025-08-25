@@ -18,8 +18,8 @@ simulation_models:
 penalty: [scad, mcp, l1, None]
 kernel: [gaussian, linear]
 measure_stat: [HSIC, PC]
-dclasso:
-  - name: dclasso
+smrmr:
+  - name: smrmr
     parameters:
       alpha: 0.3
       n1: 0.5

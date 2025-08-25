@@ -1,13 +1,13 @@
 config_path: results/real_data/nf_config.yaml
 out: results/real_data
-data_location: ../dclasso_datasets
+data_location: ../smrmr_datasets
 folds: 5
 repeat: 10
 penalty: [scad, mcp, l1, None]
 kernel: [gaussian]
 measure_stat: [HSIC, PC] #, PC] # 
-dclasso:
-  - name: dclasso
+smrmr:
+  - name: smrmr
     parameters:
       alpha: 0.3
       n1: 0.5
