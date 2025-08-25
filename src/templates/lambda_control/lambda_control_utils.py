@@ -1,8 +1,8 @@
 from functools import partial
 import numpy as np
-from dclasso.dc_lasso import loss
-from dclasso.utils import alpha_threshold, minimize_loss
-from dclasso import pic_penalty
+from smrmr.smrmr_class import loss
+from smrmr.utils import alpha_threshold, minimize_loss
+from smrmr import pic_penalty
 
 
 def fdr(causal_features, selected_features, verbose=False):
@@ -36,7 +36,7 @@ def perform_alpha_computations(
 
 
 def perform_optimisation_with_parameters(
-    dclasso_main,
+    smrmr_main,
     pen,
     opt,
     lam,
@@ -52,11 +52,11 @@ def perform_optimisation_with_parameters(
     conservative,
 ):
     penalty_kwargs = {"name": pen, "lamb": lam}
-    beta, value, warm_start = dclasso_main.cvx_solve(penalty_kwargs)
+    beta, value, warm_start = smrmr_main.cvx_solve(penalty_kwargs)
     if warm_start:
-        loss_fn = dclasso_main.compute_loss_fn(penalty_kwargs)
+        loss_fn = smrmr_main.compute_loss_fn(penalty_kwargs)
 
-        step_function, opt_state, beta = dclasso_main.setup_optimisation(
+        step_function, opt_state, beta = smrmr_main.setup_optimisation(
             loss_fn,
             opt,
             beta,
@@ -68,25 +68,25 @@ def perform_optimisation_with_parameters(
             beta,
             max_epoch,
             eps_stop,
-            verbose=dclasso_main.verbose,
+            verbose=smrmr_main.verbose,
         )
     wjs = beta[:d] - beta[d:]
     fdr_l, selected_l = perform_alpha_computations(
-        alpha_list, wjs, dclasso_main.screen_indices_, causal_features, conservative
+        alpha_list, wjs, smrmr_main.screen_indices_, causal_features, conservative
     )
 
     loss_fn = partial(
         loss,
-        Dxy=dclasso_main.Dxy,
-        Dxx=dclasso_main.Dxx,
+        Dxy=smrmr_main.Dxy,
+        Dxx=smrmr_main.Dxx,
         penalty_func=pic_penalty({"name": "None"}),
     )
 
     loss_train = float(loss_fn(beta))
     loss_fn = partial(
         loss,
-        Dxy=dclasso_main.Dxy_val,
-        Dxx=dclasso_main.Dxx_val,
+        Dxy=smrmr_main.Dxy_val,
+        Dxx=smrmr_main.Dxx_val,
         penalty_func=pic_penalty({"name": "None"}),
     )
     loss_valid = float(loss_fn(beta[:d]))

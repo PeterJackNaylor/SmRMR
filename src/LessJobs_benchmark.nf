@@ -6,8 +6,8 @@ config_file = file(params.config_path)
 
 include { simulation_train_validation_test_unique } from './nf_core/data_workflows.nf'
 
-process dclasso {
-    tag "model=DCLasso);params=(${model_tag};${PENALTY})"
+process smrmr {
+    tag "model=smrmr);params=(${model_tag};${PENALTY})"
     errorStrategy = 'retry'
     maxRetries = 2
     beforeScript "source /home/pnaylor/NN-CD/GPU_LOCKS/set_gpu.sh /home/pnaylor/NN-CD/"
@@ -26,7 +26,7 @@ process dclasso {
         (MS == "HSIC") || (KERNEL == "linear")
 
     script:
-        pyfile = file("src/templates/feature_selection/DCLasso_simulations_lessjobs.py")
+        pyfile = file("src/templates/feature_selection/smrmr_simulations_lessjobs.py")
         if (MS != "HSIC"){
             model_tag = MS
         } else {
@@ -86,19 +86,19 @@ workflow models {
         data
         feature_selection_methods
         prediction_methods
-        dclasso_ms
-        dclasso_kernel
-        dclasso_penalty
+        smrmr_ms
+        smrmr_kernel
+        smrmr_penalty
         metrics
         config_file
     main:
         data.flatten().filter(~/.*?\.npz/).unique().set{ all_npz }
-        dclasso(all_npz.collect(), dclasso_ms, dclasso_kernel, dclasso_penalty, config_file)
+        smrmr(all_npz.collect(), smrmr_ms, smrmr_kernel, smrmr_penalty, config_file)
         feature_selection(feature_selection_methods, all_npz.collect(), config_file)
-        dclasso.out.concat(feature_selection.out).set{results}
+        smrmr.out.concat(feature_selection.out).set{results}
         table_and_plot(results.collect())
 
-    //     dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
+    //     smrmr.out .concat(feature_selection.out) .set{feature_selection_model}
     //     prediction(prediction_methods, feature_selection_model, config_file)
 
     //     performance(metrics, prediction.out)

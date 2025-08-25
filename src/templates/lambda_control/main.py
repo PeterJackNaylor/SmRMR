@@ -19,8 +19,8 @@ from jax import random
 import jax.numpy as jnp
 from sklearn.utils.validation import check_X_y
 from tqdm import tqdm
-from dclasso import DCLasso, pic_penalty
-from dclasso.dc_lasso import loss
+from smrmr import smrmr, pic_penalty
+from smrmr.smrmr_class import loss
 
 import utils as u
 from lambda_control.lambda_control_utils import (
@@ -104,7 +104,7 @@ for ms, kernel in tqdm(ms_kernel_generator, total=tot_ms_kern):
     penalty_init, optimizer_init, lambda_init = next(iterable)
     penalty_kwargs = {"name": penalty_init, "lamb": lambda_init}
 
-    dl = DCLasso(alpha=alpha_list[0], measure_stat=ms, kernel=kernel)
+    dl = smrmr(alpha=alpha_list[0], measure_stat=ms, kernel=kernel)
 
     dl.fit(
         X,

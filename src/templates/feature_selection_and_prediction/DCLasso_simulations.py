@@ -19,7 +19,7 @@ from functools import partial
 from operator import itemgetter
 import numpy as np
 from pandas import DataFrame
-from dclasso import DCLasso
+from smrmr import smrmr
 import utils as u
 
 
@@ -45,7 +45,7 @@ def main():
     evaluation_function = partial(u.evaluate_function, mode=mode)
 
     minimize_val_loss = True
-    param_grid = u.read_parameters("${PARAMS_FILE}", "dclasso", "dclasso")
+    param_grid = u.read_parameters("${PARAMS_FILE}", "smrmr", "smrmr")
 
     hyperparameters = {
         "lambda": param_grid["lambda"],
@@ -54,7 +54,7 @@ def main():
         "optimizer": param_grid["optimizer"],
     }
 
-    dl = DCLasso(
+    dl = smrmr(
         alpha=param_grid["alpha"],
         measure_stat="${AM}",
         kernel="${KERNEL}",
@@ -96,7 +96,7 @@ def main():
         u.save_preds_npz(np.zeros(X_test.shape[0]), best_hyperparameter)
 
     hp_dic = {}
-    with open("hyperparameters_selection.dclasso.tsv", "a") as file:
+    with open("hyperparameters_selection.smrmr.tsv", "a") as file:
         file.write(f"# score: {best_score}\\n")
         for param in best_hyperparameter.split("_"):
             name, value = param.split("=")
@@ -105,7 +105,7 @@ def main():
         DataFrame({"features": best_features, "weight": wj}).to_csv(
             file, sep="\\t", index=False
         )
-    u.save_scores_npz(best_features, selected_feats, wj, hp_dic, "scores_dclasso.npz")
+    u.save_scores_npz(best_features, selected_feats, wj, hp_dic, "scores_smrmr.npz")
 
 
 if __name__ == "__main__":

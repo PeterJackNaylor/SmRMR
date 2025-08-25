@@ -13,8 +13,8 @@ Output files:
 import numpy as np
 from sklearn.utils.validation import check_X_y
 
-from dclasso import DCLasso
-from dclasso.association_measures.kernel_tools import check_vector
+from smrmr import smrmr
+from smrmr.association_measures.kernel_tools import check_vector
 import utils as u
 
 
@@ -49,7 +49,7 @@ causal_feats = causal_feats["featnames"][causal_feats["selected"]]
 am = "${AM}"
 kernel = "${KERNEL}" if am in am_kernels else ""
 
-dl = DCLasso(alpha="", measure_stat=am, kernel=kernel)
+dl = smrmr(alpha="", measure_stat=am, kernel=kernel)
 
 # Start screening
 ############################

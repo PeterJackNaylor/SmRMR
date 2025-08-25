@@ -21,36 +21,36 @@ create_folder("html2")
 colour_map = {   
         "HSICLasso": "#006d2c",
         "MRMR": "#810f7c", 
-        "DCLasso(HSIC, Gaussian, None)": "#fcbba1",
-        "DCLasso(HSIC, Gaussian, L1)": "#fb6a4a",
-        "DCLasso(HSIC, Gaussian, MCP)": "#cb181d",
-        "DCLasso(HSIC, Gaussian, SCAD)": "#a50f15",
-        # "DCLasso(HSIC, laplacian, None)": "#fee391",
-        # "DCLasso(HSIC, laplacian, l1)": "#fe9929",
-        # "DCLasso(HSIC, laplacian, mcp)": "#cc4c02",
-        # "DCLasso(HSIC, laplacian, scad)": "#993404",
-        "DCLasso(PC, None)": "#c7e9b4",
-        "DCLasso(PC, L1)": "#41b6c4",
-        "DCLasso(PC, MCP)": "#225ea8",
-        "DCLasso(PC, SCAD)": "#253494"
+        "smrmr(HSIC, Gaussian, None)": "#fcbba1",
+        "smrmr(HSIC, Gaussian, L1)": "#fb6a4a",
+        "smrmr(HSIC, Gaussian, MCP)": "#cb181d",
+        "smrmr(HSIC, Gaussian, SCAD)": "#a50f15",
+        # "smrmr(HSIC, laplacian, None)": "#fee391",
+        # "smrmr(HSIC, laplacian, l1)": "#fe9929",
+        # "smrmr(HSIC, laplacian, mcp)": "#cc4c02",
+        # "smrmr(HSIC, laplacian, scad)": "#993404",
+        "smrmr(PC, None)": "#c7e9b4",
+        "smrmr(PC, L1)": "#41b6c4",
+        "smrmr(PC, MCP)": "#225ea8",
+        "smrmr(PC, SCAD)": "#253494"
     }
 
 
 # colour_map = {   
 #         "hsic_lasso": "#006d2c",
 #         "mrmr": "#810f7c", 
-#         "DCLasso(gaussian, HSIC, None)": "#fcbba1",
-#         "DCLasso(gaussian, HSIC, l1)": "#fb6a4a",
-#         "DCLasso(gaussian, HSIC, mcp)": "#cb181d",
-#         "DCLasso(gaussian, HSIC, scad)": "#a50f15",
-#         "DCLasso(linear, HSIC, None)": "#fee391",
-#         "DCLasso(linear, HSIC, l1)": "#fe9929",
-#         "DCLasso(linear, HSIC, mcp)": "#cc4c02",
-#         "DCLasso(linear, HSIC, scad)": "#993404",
-#         "DCLasso(PC, None)": "#c7e9b4",
-#         "DCLasso(PC, l1)": "#41b6c4",
-#         "DCLasso(PC, mcp)": "#225ea8",
-#         "DCLasso(PC, scad)": "#253494"
+#         "smrmr(gaussian, HSIC, None)": "#fcbba1",
+#         "smrmr(gaussian, HSIC, l1)": "#fb6a4a",
+#         "smrmr(gaussian, HSIC, mcp)": "#cb181d",
+#         "smrmr(gaussian, HSIC, scad)": "#a50f15",
+#         "smrmr(linear, HSIC, None)": "#fee391",
+#         "smrmr(linear, HSIC, l1)": "#fe9929",
+#         "smrmr(linear, HSIC, mcp)": "#cc4c02",
+#         "smrmr(linear, HSIC, scad)": "#993404",
+#         "smrmr(PC, None)": "#c7e9b4",
+#         "smrmr(PC, l1)": "#41b6c4",
+#         "smrmr(PC, mcp)": "#225ea8",
+#         "smrmr(PC, scad)": "#253494"
 #     }
 
 
@@ -100,11 +100,11 @@ def tuple_sort(my_tup):
 
 def curve_name(method):
     ms, kernel, penalty, meth = method
-    if meth == "DCLasso":
+    if meth == "smrmr":
         if ms == "PC":
-            name = f"DCLasso({ms}, {penalty})"
+            name = f"smrmr({ms}, {penalty})"
         else:
-            name = f"DCLasso({ms}, {kernel}, {penalty})"
+            name = f"smrmr({ms}, {kernel}, {penalty})"
     else:
         name = meth
     return name
@@ -112,7 +112,7 @@ def curve_name(method):
 def plot_var(row, col, var, tab, fig, showlegend=False):
     methods = list(tab.groupby(['MS','KERNEL', 'PENALTY', 'METHOD'], dropna=False).size().index)
     methods = tuple_sort(methods)
-    methods = [('HSIC', 'Gaussian', 'None', 'DCLasso'), ('HSIC', 'Gaussian', 'L1', 'DCLasso'), ('HSIC', 'Gaussian', 'MCP', 'DCLasso'), ('HSIC', 'Gaussian', 'SCAD', 'DCLasso'),  ('None2', 'None2', 'None2', 'MRMR'),  ('None2', 'None2', 'None2', 'HSICLasso'), ('PC', 'None2', 'None', 'DCLasso'), ('PC', 'None2', 'L1', 'DCLasso'), ('PC', 'None2', 'MCP', 'DCLasso'), ('PC', 'None2', 'SCAD', 'DCLasso')]
+    methods = [('HSIC', 'Gaussian', 'None', 'smrmr'), ('HSIC', 'Gaussian', 'L1', 'smrmr'), ('HSIC', 'Gaussian', 'MCP', 'smrmr'), ('HSIC', 'Gaussian', 'SCAD', 'smrmr'),  ('None2', 'None2', 'None2', 'MRMR'),  ('None2', 'None2', 'None2', 'HSICLasso'), ('PC', 'None2', 'None', 'smrmr'), ('PC', 'None2', 'L1', 'smrmr'), ('PC', 'None2', 'MCP', 'smrmr'), ('PC', 'None2', 'SCAD', 'smrmr')]
     for method in methods:
         ms, kernel, penalty, meth = method
         name = curve_name(method)
@@ -153,10 +153,10 @@ def get_method(st):
         else:
             return "MRMR"
     else:
-        return "DCLasso"
+        return "smrmr"
 
 def get_ms_kernel_penalty(st, method):
-    if method == "DCLasso":
+    if method == "smrmr":
         infos = st[8:-1].split(",")
         if infos[-1] == "PC":
             ms = "PC"
@@ -213,7 +213,7 @@ def prep_table(table):
     new_index = pd.MultiIndex.from_product([
         [100, 500],
         [100, 500, 5000],
-        ["DCLasso", "HSICLasso", "MRMR"],
+        ["smrmr", "HSICLasso", "MRMR"],
         ["HSIC", "PC", "None2"],
         ["Gaussian", "None2"],
         ["None", "None2", "L1", "MCP", "SCAD"]],

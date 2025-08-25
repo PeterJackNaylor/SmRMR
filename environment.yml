@@ -1,4 +1,4 @@
-name: dclasso
+name: smrmr
 channels:
   - conda-forge
   - bioconda

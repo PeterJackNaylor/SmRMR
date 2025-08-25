@@ -2,7 +2,7 @@
 # GLOBALS
 CONDA_ENV = ./env/
 CONDA_ACTIVATE = eval "$$(conda shell.bash hook)"; conda activate $(CONDA_ENV); export PYTHONPATH=`pwd`:$${PYTHONPATH}; [[ -z "${DEBUG}" ]] && export FILENAME='nf_config.yaml' || export FILENAME="test.yaml"
-PROFILE = -c ./nextflow.config -profile kuma
+PROFILE = -c ./nextflow.config -profile local
 SHELL = bash
 
 .PHONY: $(CONDA_ENV) clean setup test jupyter
@@ -16,7 +16,7 @@ setup: $(CONDA_ENV)
 	pip install -U kaleido
 
 docker_build: Dockerfile
-	docker build -t dclasso .
+	docker build -t smrmr .
 
 # screening:
 # 	$(CONDA_ACTIVATE); nextflow src/screening.nf $(PROFILE) -params-file results/screening/$${FILENAME} -resume

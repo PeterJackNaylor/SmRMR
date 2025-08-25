@@ -19,14 +19,14 @@ ENV PATH /opt/conda/bin:$PATH
 # setup conda virtual environment
 COPY environment.yml .
 RUN conda install mamba -n base -c conda-forge
-RUN mamba env create --name dclasso -f environment.yml
+RUN mamba env create --name smrmr -f environment.yml
 RUN R -e "IRkernel::installspec()"
 
-RUN echo "conda activate dclasso" >> ~/.bashrc
-ENV PATH /opt/conda/envs/dclasso/bin:$PATH
-ENV CONDA_DEFAULT_ENV $dclasso
+RUN echo "conda activate smrmr" >> ~/.bashrc
+ENV PATH /opt/conda/envs/smrmr/bin:$PATH
+ENV CONDA_DEFAULT_ENV $smrmr
 
 # set up project
-RUN mkdir /dclasso
-WORKDIR dclasso
+RUN mkdir /smrmr
+WORKDIR smrmr
 EXPOSE 8888

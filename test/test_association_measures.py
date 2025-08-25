@@ -2,8 +2,8 @@ import jax.numpy as np
 from jax.random import PRNGKey, uniform
 import pytest
 
-from dclasso.association_measures import distance_corr, projection_corr, HSIC
-from dclasso.association_measures.kernel_tools import get_kernel_function
+from smrmr.association_measures import distance_corr, projection_corr, HSIC
+from smrmr.association_measures.kernel_tools import get_kernel_function
 
 key = PRNGKey(42)
 X = uniform(key, shape=(10, 50))

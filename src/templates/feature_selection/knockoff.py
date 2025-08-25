@@ -16,10 +16,10 @@ from jax import random
 from sklearn.utils.validation import check_X_y
 from pandas import DataFrame
 
-from dclasso import DCLasso
-from dclasso.dc_lasso import alpha_threshold
+from smrmr import smrmr
+from smrmr.smrmr_class import alpha_threshold
 import utils as u
-from dclasso.utils import (
+from smrmr.utils import (
     knock_off_check_parameters,
     get_equi_features,
     generate_random_sets,
@@ -49,7 +49,7 @@ def main():
 
     X_train = train_data["X"]
     y_train = train_data["y"]
-    dl = DCLasso(alpha=param_grid["alpha"], measure_stat="${AM}", kernel="${KERNEL}")
+    dl = smrmr(alpha=param_grid["alpha"], measure_stat="${AM}", kernel="${KERNEL}")
 
     key = random.PRNGKey(seed)
 

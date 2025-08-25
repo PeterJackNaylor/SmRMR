@@ -1,7 +1,7 @@
 config_path: results/benchmark/nf_config.yaml
 out: results/benchmark
 repeat: 2
-simulation_np: [[100, 100], [100, 500], [100, 5000]] #, [500, 100], [500, 500], [500, 5000], [1000, 5000]]
+simulation_np: [[100, 100], [100, 500]] #, [100, 5000]] #, [500, 100], [500, 500], [500, 5000], [1000, 5000]]
 validation_samples: [[100, 100], [100, 500]]
 test_samples: [[10000, 100], [10000, 500]]
 simulation_models:

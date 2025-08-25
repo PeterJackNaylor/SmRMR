@@ -1,8 +1,8 @@
 from sklearn.utils.estimator_checks import check_estimator
 
-from dclasso.dc_lasso import DCLasso
+from smrmr.smrmr_class import smrmr
 
 
 def test_sklearn():
 
-    check_estimator(DCLasso())
+    check_estimator(smrmr())

@@ -6,8 +6,8 @@ CWD = System.getProperty("user.dir")
 
 include { simulation_train_validation_test } from './nf_core/data_workflows.nf'
 
-process dclasso {
-    tag "model=DCLasso;data=${TAG});params=(${model_tag};${PENALTY})"
+process smrmr {
+    tag "model=smrmr;data=${TAG});params=(${model_tag};${PENALTY})"
     errorStrategy = 'retry'
     maxRetries = 2
 
@@ -19,7 +19,7 @@ process dclasso {
         val PARAMS_FILE
 
     output:
-        tuple val("feature_selection=DCLasso(${PENALTY},${model_tag});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_dclasso.npz")
+        tuple val("feature_selection=smrmr(${PENALTY},${model_tag});data=${TAG})"), path(TRAIN_NPZ), path(VAL_NPZ), path(TEST_NPZ), path(CAUSAL_NPZ), path("scores_smrmr.npz")
 
     when:
         (MS == "HSIC") || (KERNEL == "gaussian")
@@ -30,7 +30,7 @@ process dclasso {
         } else {
             model_tag = "${MS},${KERNEL}"
         }
-        template "feature_selection/DCLasso_simulations.py"
+        template "feature_selection/smrmr_simulations.py"
 }
 
 process feature_selection {
@@ -131,16 +131,16 @@ workflow models {
         data
         feature_selection_methods
         prediction_methods
-        dclasso_ms
-        dclasso_kernel
-        dclasso_penalty
+        smrmr_ms
+        smrmr_kernel
+        smrmr_penalty
         metrics
         config_file
     main:
-        dclasso(data, dclasso_ms, dclasso_kernel, dclasso_penalty, config_file)
+        smrmr(data, smrmr_ms, smrmr_kernel, smrmr_penalty, config_file)
         feature_selection(feature_selection_methods, data, config_file)
 
-        dclasso.out .concat(feature_selection.out) .set{feature_selection_model}
+        smrmr.out .concat(feature_selection.out) .set{feature_selection_model}
         prediction(prediction_methods, feature_selection_model, config_file)
 
         performance(metrics, prediction.out)

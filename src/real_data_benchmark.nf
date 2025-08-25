@@ -3,9 +3,9 @@ CWD = System.getProperty("user.dir")
 
 data_files = files(params.data_location + "/*.npz")
 
-process dclasso {
+process smrmr {
     time '1d'
-    tag "model=DCLasso;data=${TAG});params=(${model_tag};${PENALTY})"
+    tag "model=smrmr;data=${TAG});params=(${model_tag};${PENALTY})"
     errorStrategy = 'ignore'
     // maxRetries = 2
 
@@ -30,8 +30,8 @@ process dclasso {
         } else {
             model_tag = "${MS},${KERNEL}"
         }
-        METHOD = "DCLasso(${PENALTY},${model_tag})"
-        template "feature_selection/DCLasso_realdata.py"
+        METHOD = "smrmr(${PENALTY},${model_tag})"
+        template "feature_selection/smrmr_realdata.py"
 }
 
 process feature_selection {
@@ -80,16 +80,16 @@ workflow models {
         data
         feature_selection_methods
         prediction_methods
-        dclasso_ms
-        dclasso_kernel
-        dclasso_penalty
+        smrmr_ms
+        smrmr_kernel
+        smrmr_penalty
         repeat
         config_file
     main:
-        dclasso(data, dclasso_ms, dclasso_kernel, dclasso_penalty, repeat, config_file)
+        smrmr(data, smrmr_ms, smrmr_kernel, smrmr_penalty, repeat, config_file)
         feature_selection(feature_selection_methods, data, params.repeat, config_file)
 
-        dclasso.out .concat(feature_selection.out) .set{selected_features}
+        smrmr.out .concat(feature_selection.out) .set{selected_features}
         selected_features.groupTuple().set{csv_tables}
 
         groupCSVandTXT(csv_tables)
