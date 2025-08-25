@@ -18,12 +18,6 @@ setup: $(CONDA_ENV)
 docker_build: Dockerfile
 	docker build -t smrmr .
 
-# screening:
-# 	$(CONDA_ACTIVATE); nextflow src/screening.nf $(PROFILE) -params-file results/screening/$${FILENAME} -resume
-
-# lambda_control:
-# 	$(CONDA_ACTIVATE); nextflow src/lambda_control.nf $(PROFILE) -params-file results/lambda_control/$${FILENAME} -resume
-
 benchmark:
 	$(CONDA_ACTIVATE); nextflow src/benchmark.nf $(PROFILE) -params-file results/benchmark/$${FILENAME} -resume
 
